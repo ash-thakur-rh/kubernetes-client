@@ -1,0 +1,23 @@
+[
+  {
+    "name": "io.fabric8.openshift.api.model.Build"
+  },
+  {
+    "name": "io.fabric8.openshift.api.model.BuildConfig"
+  },
+  {
+    "name": "io.fabric8.openshift.api.model.DeploymentConfig"
+  },
+  {
+    "name": "io.fabric8.openshift.api.model.Route"
+  },
+  {
+    "name": "io.fabric8.openshift.api.model.ImageStream"
+  },
+  {
+    "name": "io.fabric8.openshift.api.model.Project"
+  },
+  {
+    "name": "io.fabric8.openshift.api.model.Template"
+  }
+]

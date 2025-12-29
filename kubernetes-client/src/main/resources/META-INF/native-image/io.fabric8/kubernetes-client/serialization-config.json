@@ -1,0 +1,11 @@
+[
+  {
+    "name": "io.fabric8.kubernetes.api.model.KubernetesResource"
+  },
+  {
+    "name": "io.fabric8.kubernetes.api.model.HasMetadata"
+  },
+  {
+    "name": "io.fabric8.kubernetes.client.CustomResource"
+  }
+]
