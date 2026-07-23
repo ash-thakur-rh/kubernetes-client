@@ -2,7 +2,7 @@ name: Deploy Docs
 
 on:
   push:
-    branches: [main]
+    branches: [main, docs/deploy-preview]
     paths:
       - 'doc/**'
       - 'site/**'
