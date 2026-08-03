@@ -15,7 +15,7 @@
  */
 package io.fabric8.mockwebserver.crud;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import io.fabric8.mockwebserver.Context;
 import io.fabric8.mockwebserver.MockServerException;
 import io.fabric8.mockwebserver.http.Dispatcher;

@@ -12,7 +12,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonDeserialize;
 import io.fabric8.knative.bindings.v1.KafkaNetSpec;
 import io.fabric8.knative.duck.v1.CloudEventOverrides;
 import io.fabric8.knative.duck.v1.DeliverySpec;
@@ -41,7 +41,7 @@ import lombok.experimental.Accessors;
 /**
  * KafkaSourceSpec defines the desired state of the KafkaSource.
  */
-@JsonDeserialize(using = com.fasterxml.jackson.databind.JsonDeserializer.None.class)
+@JsonDeserialize(using = tools.jackson.databind.ValueDeserializer.None.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
     "bootstrapServers",

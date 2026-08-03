@@ -12,7 +12,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonDeserialize;
 import io.fabric8.kubernetes.api.builder.Editable;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.ContainerPort;
@@ -37,7 +37,7 @@ import lombok.experimental.Accessors;
 /**
  * Source specifies the source identities of a request. Fields in the source are ANDed together.<br><p> <br><p> For example, the following source matches if the principal is `admin` or `dev` and the namespace is `prod` or `test` and the ip is not `203.0.113.4`.<br><p> <br><p> ```yaml principals: ["admin", "dev"] namespaces: ["prod", "test"] notIpBlocks: ["203.0.113.4"] ```
  */
-@JsonDeserialize(using = com.fasterxml.jackson.databind.JsonDeserializer.None.class)
+@JsonDeserialize(using = tools.jackson.databind.ValueDeserializer.None.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
     "ipBlocks",

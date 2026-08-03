@@ -15,7 +15,8 @@
  */
 package io.fabric8.kubernetes.client.informers;
 
-import com.fasterxml.jackson.databind.JsonMappingException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DatabindException;
 import io.fabric8.kubernetes.client.WatcherException;
 import org.junit.jupiter.api.Test;
 
@@ -28,8 +29,8 @@ class ExceptionHandlerTest {
   void testDeserializationException() {
     assertFalse(ExceptionHandler.isDeserializationException(new NullPointerException()));
     assertTrue(
-        ExceptionHandler.isDeserializationException(new WatcherException("x", new JsonMappingException(() -> {
-        }, ""))));
+        ExceptionHandler.isDeserializationException(new WatcherException("x",
+            DatabindException.from((JsonParser) null, ""))));
   }
 
 }

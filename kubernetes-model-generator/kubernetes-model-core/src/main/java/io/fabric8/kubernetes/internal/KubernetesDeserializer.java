@@ -15,11 +15,12 @@
  */
 package io.fabric8.kubernetes.internal;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DatabindException;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ValueDeserializer;
 import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.KubernetesListBuilder;
@@ -38,7 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-public class KubernetesDeserializer extends JsonDeserializer<KubernetesResource> {
+public class KubernetesDeserializer extends ValueDeserializer<KubernetesResource> {
 
   static class TypeKey {
     final String kind;
@@ -95,57 +96,58 @@ public class KubernetesDeserializer extends JsonDeserializer<KubernetesResource>
   }
 
   @Override
-  public KubernetesResource deserialize(JsonParser jp, DeserializationContext ctxt) throws IOException {
+  public KubernetesResource deserialize(JsonParser jp, DeserializationContext ctxt) {
     final JsonNode node = jp.readValueAsTree();
     return deserialize(jp, node);
   }
 
-  final KubernetesResource deserialize(JsonParser jp, JsonNode node) throws IOException {
+  final KubernetesResource deserialize(JsonParser jp, JsonNode node) {
     if (node.isObject()) {
       return fromObjectNode(jp, node);
     } else if (node.isArray()) {
       return fromArrayNode(jp, node);
     }
-    Object object = node.traverse(jp.getCodec()).readValueAs(Object.class);
+    Object object = ((ObjectMapper) jp.objectReadContext()).treeToValue(node, Object.class);
     if (object == null) {
       return null;
     }
     return new RawExtension(object);
   }
 
-  private KubernetesResource fromArrayNode(JsonParser jp, JsonNode node) throws IOException {
-    Iterator<JsonNode> iterator = node.elements();
+  private KubernetesResource fromArrayNode(JsonParser jp, JsonNode node) {
+    Iterator<JsonNode> iterator = node.values().iterator();
     List<HasMetadata> list = new ArrayList<>();
     while (iterator.hasNext()) {
       JsonNode jsonNode = iterator.next();
       if (jsonNode.isObject()) {
         KubernetesResource resource = fromObjectNode(jp, jsonNode);
         if (!(resource instanceof HasMetadata)) {
-          throw new JsonMappingException(jp, "Cannot parse a nested array containing a non-HasMetadata resource");
+          throw DatabindException.from(jp, "Cannot parse a nested array containing a non-HasMetadata resource");
         }
         list.add((HasMetadata) resource);
       } else {
-        throw new JsonMappingException(jp, "Cannot parse a nested array containing non-object resource");
+        throw DatabindException.from(jp, "Cannot parse a nested array containing non-object resource");
       }
     }
     return new KubernetesListBuilder().withItems(list).build();
   }
 
-  private KubernetesResource fromObjectNode(JsonParser jp, JsonNode node) throws IOException {
+  private KubernetesResource fromObjectNode(JsonParser jp, JsonNode node) {
     TypeKey key = createKey(node);
     Class<? extends KubernetesResource> resourceType = mapping.getForKey(key);
+    ObjectMapper mapper = (ObjectMapper) jp.objectReadContext();
     if (resourceType == null) {
       if (key == null) {
         // just a wrapper around a map
         // if this raw mapping typed as HasMetadata, a failure will result
-        return jp.getCodec().treeToValue(node, RawExtension.class);
+        return mapper.treeToValue(node, RawExtension.class);
       }
       // this is not quite correct as not all resources have metadata - see LocalResourceAccessReview
-      return jp.getCodec().treeToValue(node, GenericKubernetesResource.class);
+      return mapper.treeToValue(node, GenericKubernetesResource.class);
     } else if (KubernetesResource.class.isAssignableFrom(resourceType)) {
-      return jp.getCodec().treeToValue(node, resourceType);
+      return mapper.treeToValue(node, resourceType);
     }
-    throw new JsonMappingException(jp, String.format(
+    throw DatabindException.from(jp, String.format(
         "There's a class loading issue, %s is registered as a KubernetesResource, but is not an instance of KubernetesResource",
         resourceType.getName()));
   }

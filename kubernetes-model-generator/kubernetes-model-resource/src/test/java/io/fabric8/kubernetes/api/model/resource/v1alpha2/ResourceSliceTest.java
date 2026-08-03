@@ -15,7 +15,8 @@
  */
 package io.fabric8.kubernetes.api.model.resource.v1alpha2;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import io.fabric8.kubernetes.api.model.Namespaced;
 import io.fabric8.kubernetes.api.model.Quantity;
 import org.assertj.core.api.InstanceOfAssertFactories;
@@ -27,7 +28,7 @@ import java.util.Scanner;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ResourceSliceTest {
-  private final ObjectMapper mapper = new ObjectMapper();
+  private final ObjectMapper mapper = new JsonMapper();
 
   @Test
   void isClusterScoped() {

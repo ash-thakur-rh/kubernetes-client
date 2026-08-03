@@ -15,8 +15,9 @@
  */
 package io.fabric8.kubernetes.api.model.apiextensions.v1;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -32,7 +33,7 @@ class JSONSchemaPropsOrBoolTest {
   @Test
   void itDeserializesAdditionalPropertiesTrue() throws IOException {
     InputStream resourceAsStream = getClass().getResourceAsStream("/additionalproperties_true.json");
-    JSONSchemaProps props = new ObjectMapper().readValue(resourceAsStream, JSONSchemaProps.class);
+    JSONSchemaProps props = new JsonMapper().readValue(resourceAsStream, JSONSchemaProps.class);
 
     Assertions.assertEquals(props, new JSONSchemaPropsBuilder()
         .withType("object")
@@ -43,13 +44,13 @@ class JSONSchemaPropsOrBoolTest {
   }
 
   @Test
-  void itSerializesAdditionalPropertiesTrue() throws JsonProcessingException {
+  void itSerializesAdditionalPropertiesTrue() throws JacksonException {
     String expectedJson = new BufferedReader(
         new InputStreamReader(getClass().getResourceAsStream("/additionalproperties_true.json"), StandardCharsets.UTF_8))
         .lines()
         .collect(Collectors.joining("\n"));
 
-    String outputJson = new ObjectMapper().writeValueAsString(new JSONSchemaPropsBuilder()
+    String outputJson = new JsonMapper().writeValueAsString(new JSONSchemaPropsBuilder()
         .withType("object")
         .withAdditionalProperties(new JSONSchemaPropsOrBoolBuilder()
             .withAllows(true)
@@ -62,7 +63,7 @@ class JSONSchemaPropsOrBoolTest {
   @Test
   void itDeserializesAdditionalPropertiesTyped() throws IOException {
     InputStream resourceAsStream = getClass().getResourceAsStream("/additionalproperties_typed.json");
-    JSONSchemaProps props = new ObjectMapper().readValue(resourceAsStream, JSONSchemaProps.class);
+    JSONSchemaProps props = new JsonMapper().readValue(resourceAsStream, JSONSchemaProps.class);
 
     Assertions.assertEquals(props, new JSONSchemaPropsBuilder()
         .withType("object")
@@ -74,13 +75,13 @@ class JSONSchemaPropsOrBoolTest {
   }
 
   @Test
-  void itSerializesAdditionalPropertiesTyped() throws JsonProcessingException {
+  void itSerializesAdditionalPropertiesTyped() throws JacksonException {
     String expectedJson = new BufferedReader(
         new InputStreamReader(getClass().getResourceAsStream("/additionalproperties_typed.json"), StandardCharsets.UTF_8))
         .lines()
         .collect(Collectors.joining("\n"));
 
-    String outputJson = new ObjectMapper().writeValueAsString(new JSONSchemaPropsBuilder()
+    String outputJson = new JsonMapper().writeValueAsString(new JSONSchemaPropsBuilder()
         .withType("object")
         .withAdditionalProperties(new JSONSchemaPropsOrBoolBuilder()
             .withNewSchema().withType("string").endSchema()

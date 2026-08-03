@@ -15,8 +15,9 @@
  */
 package io.fabric8.kubernetes.api.model;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import io.fabric8.kubernetes.model.util.Helper;
 import io.fabric8.zjsonpatch.JsonDiff;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,11 +31,11 @@ class EventTest {
 
   @BeforeEach
   void setUp() {
-    mapper = new ObjectMapper();
+    mapper = new JsonMapper();
   }
 
   @Test
-  void testEventSerializationDeserialization() throws JsonProcessingException {
+  void testEventSerializationDeserialization() throws JacksonException {
     // Given
     final String originalJson = Helper.loadJson("/valid-event.json");
     final Event event = mapper.readValue(originalJson, Event.class);

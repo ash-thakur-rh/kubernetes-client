@@ -120,7 +120,7 @@ public class ClassInformationTest {
           .containsExactly(
               "com.fasterxml.jackson.annotation.JsonSubTypes",
               "com.fasterxml.jackson.annotation.JsonTypeInfo",
-              "com.fasterxml.jackson.databind.annotation.JsonTypeResolver",
+              "tools.jackson.databind.annotation.JsonTypeResolver",
               "io.fabric8.kubernetes.api.model.KubernetesResource");
     }
   }

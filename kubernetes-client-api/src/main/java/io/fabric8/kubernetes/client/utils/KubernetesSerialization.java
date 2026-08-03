@@ -17,24 +17,24 @@ package io.fabric8.kubernetes.client.utils;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.DeserializationConfig;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.KeyDeserializer;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectReader;
-import com.fasterxml.jackson.databind.SerializationConfig;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.cfg.HandlerInstantiator;
-import com.fasterxml.jackson.databind.cfg.MapperConfig;
-import com.fasterxml.jackson.databind.introspect.Annotated;
-import com.fasterxml.jackson.databind.jsontype.TypeIdResolver;
-import com.fasterxml.jackson.databind.jsontype.TypeResolverBuilder;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.DeserializationConfig;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.ValueDeserializer;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ValueSerializer;
+import tools.jackson.databind.KeyDeserializer;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectReader;
+import tools.jackson.databind.SerializationConfig;
+import tools.jackson.databind.cfg.DateTimeFeature;
+import tools.jackson.databind.cfg.HandlerInstantiator;
+import tools.jackson.databind.cfg.MapperConfig;
+import tools.jackson.databind.introspect.Annotated;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.jsontype.TypeIdResolver;
+import tools.jackson.databind.jsontype.TypeResolverBuilder;
 import io.fabric8.kubernetes.api.model.KubernetesResource;
 import io.fabric8.kubernetes.api.model.KubernetesResourceList;
 import io.fabric8.kubernetes.api.model.runtime.RawExtension;
@@ -76,7 +76,7 @@ public class KubernetesSerialization {
    * Creates a new instance with a fresh ObjectMapper
    */
   public KubernetesSerialization() {
-    this(new ObjectMapper(), true);
+    this(new JsonMapper(), true);
   }
 
   /**
@@ -99,68 +99,70 @@ public class KubernetesSerialization {
    * @param yamlDumpSettings configuration for YAML serialization.
    */
   public KubernetesSerialization(ObjectMapper mapper, boolean searchClassloaders, YamlDumpSettings yamlDumpSettings) {
-    this.mapper = mapper;
     this.searchClassloaders = searchClassloaders;
     this.yamlDumpSettings = yamlDumpSettings;
-    configureMapper(mapper);
+    this.mapper = configureMapper(mapper);
   }
 
-  protected void configureMapper(ObjectMapper mapper) {
-    mapper.registerModules(new JavaTimeModule(), new GoCompatibilityModule(), unmatchedFieldTypeModule);
-    mapper.disable(DeserializationFeature.FAIL_ON_INVALID_SUBTYPE);
-    mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-    mapper.disable(SerializationFeature.WRITE_DURATIONS_AS_TIMESTAMPS);
-    // omit null fields, but keep null map values
-    mapper.setDefaultPropertyInclusion(JsonInclude.Value.construct(Include.NON_NULL, Include.ALWAYS));
-    HandlerInstantiator instanciator = mapper.getDeserializationConfig().getHandlerInstantiator();
-    mapper.setConfig(mapper.getDeserializationConfig().with(new HandlerInstantiator() {
+  protected ObjectMapper configureMapper(ObjectMapper mapper) {
+    HandlerInstantiator instanciator = mapper.deserializationConfig().getHandlerInstantiator();
+    return mapper.rebuild()
+        .addModule(new GoCompatibilityModule())
+        .addModule(unmatchedFieldTypeModule)
+        .disable(DeserializationFeature.FAIL_ON_INVALID_SUBTYPE)
+        .disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
+        .disable(DateTimeFeature.WRITE_DURATIONS_AS_TIMESTAMPS)
+        .changeDefaultPropertyInclusion(v -> JsonInclude.Value.construct(Include.NON_NULL, Include.ALWAYS))
+        .handlerInstantiator(new HandlerInstantiator() {
 
-      @Override
-      public JsonDeserializer<?> deserializerInstance(DeserializationConfig config, Annotated annotated, Class<?> deserClass) {
-        if (deserClass == KubernetesDeserializer.class) {
-          return getKubernetesDeserializer();
-        }
-        if (instanciator == null) {
-          return null;
-        }
-        return instanciator.deserializerInstance(config, annotated, deserClass);
-      }
+          @Override
+          public ValueDeserializer<?> deserializerInstance(DeserializationConfig config, Annotated annotated,
+              Class<?> deserClass) {
+            if (deserClass == KubernetesDeserializer.class) {
+              return getKubernetesDeserializer();
+            }
+            if (instanciator == null) {
+              return null;
+            }
+            return instanciator.deserializerInstance(config, annotated, deserClass);
+          }
 
-      @Override
-      public KeyDeserializer keyDeserializerInstance(DeserializationConfig config, Annotated annotated,
-          Class<?> keyDeserClass) {
-        if (instanciator == null) {
-          return null;
-        }
-        return instanciator.keyDeserializerInstance(config, annotated, keyDeserClass);
-      }
+          @Override
+          public KeyDeserializer keyDeserializerInstance(DeserializationConfig config, Annotated annotated,
+              Class<?> keyDeserClass) {
+            if (instanciator == null) {
+              return null;
+            }
+            return instanciator.keyDeserializerInstance(config, annotated, keyDeserClass);
+          }
 
-      @Override
-      public JsonSerializer<?> serializerInstance(SerializationConfig config, Annotated annotated, Class<?> serClass) {
-        if (instanciator == null) {
-          return null;
-        }
-        return instanciator.serializerInstance(config, annotated, serClass);
-      }
+          @Override
+          public ValueSerializer<?> serializerInstance(SerializationConfig config, Annotated annotated, Class<?> serClass) {
+            if (instanciator == null) {
+              return null;
+            }
+            return instanciator.serializerInstance(config, annotated, serClass);
+          }
 
-      @Override
-      public TypeResolverBuilder<?> typeResolverBuilderInstance(MapperConfig<?> config, Annotated annotated,
-          Class<?> builderClass) {
-        if (instanciator == null) {
-          return null;
-        }
-        return instanciator.typeResolverBuilderInstance(config, annotated, builderClass);
-      }
+          @Override
+          public TypeResolverBuilder<?> typeResolverBuilderInstance(MapperConfig<?> config, Annotated annotated,
+              Class<?> builderClass) {
+            if (instanciator == null) {
+              return null;
+            }
+            return instanciator.typeResolverBuilderInstance(config, annotated, builderClass);
+          }
 
-      @Override
-      public TypeIdResolver typeIdResolverInstance(MapperConfig<?> config, Annotated annotated, Class<?> resolverClass) {
-        if (instanciator == null) {
-          return null;
-        }
-        return instanciator.typeIdResolverInstance(config, annotated, resolverClass);
-      }
+          @Override
+          public TypeIdResolver typeIdResolverInstance(MapperConfig<?> config, Annotated annotated, Class<?> resolverClass) {
+            if (instanciator == null) {
+              return null;
+            }
+            return instanciator.typeIdResolverInstance(config, annotated, resolverClass);
+          }
 
-    }));
+        })
+        .build();
   }
 
   private synchronized KubernetesDeserializer getKubernetesDeserializer() {
@@ -186,7 +188,7 @@ public class KubernetesSerialization {
   public <T> String asJson(T object) {
     try {
       return mapper.writeValueAsString(object);
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       throw KubernetesClientException.launderThrowable(e);
     }
   }
@@ -394,7 +396,7 @@ public class KubernetesSerialization {
     try {
       return (T) mapper.readValue(
           mapper.writeValueAsString(resource), resource.getClass());
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       throw new IllegalStateException(e);
     }
   }
@@ -441,7 +443,7 @@ public class KubernetesSerialization {
     try {
       mapper.readTree(input);
       return input; // valid json
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       return asJson(unmarshal(input, JsonNode.class));
     }
   }
@@ -450,7 +452,7 @@ public class KubernetesSerialization {
     ObjectReader reader = mapper.readerForUpdating(updatable);
     try {
       reader.readValue(patch);
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       throw KubernetesClientException.launderThrowable(e);
     }
   }

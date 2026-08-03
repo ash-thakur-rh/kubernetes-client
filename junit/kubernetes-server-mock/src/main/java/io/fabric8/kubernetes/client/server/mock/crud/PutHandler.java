@@ -15,7 +15,7 @@
  */
 package io.fabric8.kubernetes.client.server.mock.crud;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
 import io.fabric8.kubernetes.client.utils.Serialization;
 import io.fabric8.mockwebserver.crud.AttributeSet;
