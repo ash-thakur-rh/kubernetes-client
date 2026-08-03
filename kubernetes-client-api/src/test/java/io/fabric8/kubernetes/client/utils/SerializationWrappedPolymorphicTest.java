@@ -21,8 +21,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonTypeName;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.ValueDeserializer;
+import tools.jackson.databind.annotation.JsonDeserialize;
 import io.fabric8.kubernetes.api.model.KubernetesResource;
 import io.fabric8.kubernetes.api.model.Namespaced;
 import io.fabric8.kubernetes.client.CustomResource;
@@ -46,7 +46,7 @@ class SerializationWrappedPolymorphicTest {
   @Version("v1alpha1")
   static class TestCR extends CustomResource<TestCR.TestCRSpec, Void> implements Namespaced {
 
-    @JsonDeserialize(using = JsonDeserializer.None.class)
+    @JsonDeserialize(using = ValueDeserializer.None.class)
     static class TestCRSpec implements KubernetesResource {
 
       @JsonIgnore
@@ -84,7 +84,7 @@ class SerializationWrappedPolymorphicTest {
       @JsonSubTypes.Type(FooChild.class), //
       @JsonSubTypes.Type(BarChild.class), //
   })
-  @JsonDeserialize(using = JsonDeserializer.None.class)
+  @JsonDeserialize(using = ValueDeserializer.None.class)
   interface Child extends KubernetesResource {
   }
 

@@ -16,11 +16,12 @@
 package io.fabric8.kubernetes.client.server.mock;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.annotation.JsonSerialize;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.ser.std.StdSerializer;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodBuilder;
@@ -56,7 +57,7 @@ class KubernetesMockServerExtensionKubernetesClientBuilderTest {
 
     @Override
     public void accept(KubernetesClientBuilder builder) {
-      final ObjectMapper customMapper = new ObjectMapper();
+      final ObjectMapper customMapper = new JsonMapper();
       customMapper.addMixIn(ObjectMeta.class, ObjectMetaMixin.class);
       builder.withKubernetesSerialization(new KubernetesSerialization(customMapper, true));
     }
@@ -74,7 +75,7 @@ class KubernetesMockServerExtensionKubernetesClientBuilderTest {
       }
 
       @Override
-      public void serialize(String s, JsonGenerator jsonGenerator, SerializerProvider serializerProvider) throws IOException {
+      public void serialize(String s, JsonGenerator jsonGenerator, SerializationContext serializationContext) throws IOException {
         jsonGenerator.writeString(s + "-extended");
       }
     }

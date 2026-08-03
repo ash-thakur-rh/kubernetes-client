@@ -16,9 +16,10 @@
 package io.fabric8.kubernetes.client.utils;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ValueDeserializer;
+import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.json.JsonMapper;
 import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
@@ -50,7 +51,7 @@ class KubernetesSerializationTest {
 
     @BeforeEach
     void setUp() {
-      kubernetesSerialization = new KubernetesSerialization(new ObjectMapper(), false);
+      kubernetesSerialization = new KubernetesSerialization(JsonMapper.builder().build(), false);
     }
 
     @Test
@@ -109,7 +110,7 @@ class KubernetesSerializationTest {
 
     @Test
     void asYamlWithDefaultYamlDumpSettings() {
-      kubernetesSerialization = new KubernetesSerialization(new ObjectMapper(), true,
+      kubernetesSerialization = new KubernetesSerialization(JsonMapper.builder().build(), true,
           new YamlDumpSettingsBuilder().build());
       assertThat(kubernetesSerialization.asYaml(inputResource))
           .contains("\"widgets.test.fabric8.io\"");
@@ -117,7 +118,7 @@ class KubernetesSerializationTest {
 
     @Test
     void asYamlWithDefaultYamlDumpSettingsMinimizeQuotes() {
-      kubernetesSerialization = new KubernetesSerialization(new ObjectMapper(), true,
+      kubernetesSerialization = new KubernetesSerialization(JsonMapper.builder().build(), true,
           new YamlDumpSettingsBuilder().setMinimizeQuotes(true).build());
       assertThat(kubernetesSerialization.asYaml(inputResource))
           .contains("widgets.test.fabric8.io");
@@ -127,7 +128,7 @@ class KubernetesSerializationTest {
 
   @Version("v1")
   @Group("custom.core.kubernetes.io")
-  @JsonDeserialize(using = JsonDeserializer.None.class)
+  @JsonDeserialize(using = ValueDeserializer.None.class)
   public static class Pod implements HasMetadata {
 
     @JsonProperty("apiVersion")

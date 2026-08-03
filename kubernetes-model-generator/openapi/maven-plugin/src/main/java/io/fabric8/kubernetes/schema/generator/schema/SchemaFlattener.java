@@ -71,10 +71,6 @@ public class SchemaFlattener {
     preservedNames.add("openID");
   }
   private static final ObjectMapper structureMapper = Json.mapper().copy();
-  static {
-    structureMapper.getSerializationConfig().with(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY);
-    structureMapper.writer(new DefaultPrettyPrinter());
-  }
 
   private SchemaFlattener() {
   }

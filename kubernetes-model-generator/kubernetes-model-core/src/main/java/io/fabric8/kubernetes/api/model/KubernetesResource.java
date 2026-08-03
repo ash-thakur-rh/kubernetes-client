@@ -15,7 +15,7 @@
  */
 package io.fabric8.kubernetes.api.model;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonDeserialize;
 import io.fabric8.kubernetes.internal.KubernetesDeserializer;
 
 import java.io.Serializable;

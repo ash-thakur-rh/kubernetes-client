@@ -17,10 +17,10 @@ package io.fabric8.kubernetes.api.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.ValueSerializer;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.annotation.JsonSerialize;
 import io.sundr.builder.annotations.Buildable;
 import lombok.EqualsAndHashCode;
 import lombok.Setter;
@@ -67,11 +67,11 @@ public class AnyType implements Serializable {
     return value;
   }
 
-  public static class Serializer extends JsonSerializer<AnyType> {
+  public static class Serializer extends ValueSerializer<AnyType> {
 
     @Override
-    public void serialize(AnyType value, JsonGenerator jgen, SerializerProvider provider) throws IOException {
-      jgen.writeObject(value.value);
+    public void serialize(AnyType value, JsonGenerator jgen, SerializationContext provider) {
+      jgen.writePOJO(value.value);
     }
   }
 

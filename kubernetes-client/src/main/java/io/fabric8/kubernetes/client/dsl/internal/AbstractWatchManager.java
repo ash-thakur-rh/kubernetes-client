@@ -15,9 +15,9 @@
  */
 package io.fabric8.kubernetes.client.dsl.internal;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ObjectNode;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.KubernetesResource;
 import io.fabric8.kubernetes.api.model.ListOptions;
@@ -356,7 +356,7 @@ public abstract class AbstractWatchManager<T extends HasMetadata> implements Wat
   }
 
   private WatchEvent contextAwareWatchEventDeserializer(String messageSource)
-      throws JsonProcessingException {
+      throws JacksonException {
     KubernetesSerialization kubernetesSerialization = this.baseOperation.getKubernetesSerialization();
     try {
       return kubernetesSerialization.unmarshal(messageSource, WatchEvent.class);
@@ -435,7 +435,7 @@ public abstract class AbstractWatchManager<T extends HasMetadata> implements Wat
         } catch (ClassCastException e) {
           final String msg = "Received wrong type of object for watch";
           close(new WatcherException(msg, e, message));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
           final String msg = "Couldn't deserialize watch event: " + message;
           close(new WatcherException(msg, e, message));
         } catch (Exception e) {

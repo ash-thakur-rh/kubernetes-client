@@ -15,7 +15,8 @@
  */
 package io.fabric8.kubernetes.api.model.resource.v1alpha2;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -25,7 +26,7 @@ import java.util.Scanner;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class PodSchedulingContextTest {
-  private final ObjectMapper mapper = new ObjectMapper();
+  private final ObjectMapper mapper = new JsonMapper();
 
   @Test
   void deserializationAndSerializationShouldWorkAsExpected() throws IOException {

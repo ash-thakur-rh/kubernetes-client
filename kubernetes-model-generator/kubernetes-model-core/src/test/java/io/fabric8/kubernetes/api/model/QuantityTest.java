@@ -15,8 +15,9 @@
  */
 package io.fabric8.kubernetes.api.model;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,12 +37,12 @@ class QuantityTest {
 
   @BeforeEach
   void setUp() {
-    mapper = new ObjectMapper();
+    mapper = new JsonMapper();
   }
 
   @Test
   @DisplayName("Test Serialization and Deserialization")
-  void testAmountUnitSeparately() throws JsonProcessingException {
+  void testAmountUnitSeparately() throws JacksonException {
     Quantity quantity = new Quantity("256", "Mi");
     String serializedObj = mapper.writeValueAsString(quantity);
     assertThat(serializedObj).isEqualTo("\"256Mi\"");
@@ -54,14 +55,14 @@ class QuantityTest {
 
   @Test
   @DisplayName("Test Serialized value with single argument constructor")
-  void testAmount() throws JsonProcessingException {
+  void testAmount() throws JacksonException {
     Quantity quantity = new Quantity("256Mi");
     String serializedObj = mapper.writeValueAsString(quantity);
     assertThat(serializedObj).isEqualTo("\"256Mi\"");
   }
 
   @Test
-  void quantity_whenSerialized_thenAdditionalPropertiesNotPresentInSerializedForm() throws JsonProcessingException {
+  void quantity_whenSerialized_thenAdditionalPropertiesNotPresentInSerializedForm() throws JacksonException {
     // Given
     Quantity quantity = new Quantity("8Mi");
     quantity.setAdditionalProperties(Collections.singletonMap("unwantedKey", "unwantedValue"));
@@ -72,7 +73,7 @@ class QuantityTest {
   }
 
   @Test
-  void quantity_whenDeserialized_thenAdditionalPropertiesNotPresentInObject() throws JsonProcessingException {
+  void quantity_whenDeserialized_thenAdditionalPropertiesNotPresentInObject() throws JacksonException {
     // Given
     String serializedForm = "{\"amount\":256,\"format\":\"Mi\",\"additionalProperties\":{\"unwantedKey\":\"unwantedValue\"}}";
     // When

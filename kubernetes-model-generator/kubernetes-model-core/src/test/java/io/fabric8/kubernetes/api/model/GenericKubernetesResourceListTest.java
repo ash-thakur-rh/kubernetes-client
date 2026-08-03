@@ -15,8 +15,9 @@
  */
 package io.fabric8.kubernetes.api.model;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -32,7 +33,7 @@ class GenericKubernetesResourceListTest {
 
   @BeforeEach
   void setUp() {
-    objectMapper = new ObjectMapper();
+    objectMapper = new JsonMapper();
   }
 
   @Test

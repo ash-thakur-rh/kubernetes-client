@@ -15,12 +15,12 @@
  */
 package io.fabric8.kubernetes.api.model.apiextensions.v1;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ValueDeserializer;
+import tools.jackson.databind.ValueSerializer;
 
 import java.io.IOException;
 
@@ -29,24 +29,24 @@ public class JSONSchemaPropsOrBoolSerDe {
   private JSONSchemaPropsOrBoolSerDe() {
   }
 
-  public static class Serializer extends JsonSerializer<JSONSchemaPropsOrBool> {
+  public static class Serializer extends ValueSerializer<JSONSchemaPropsOrBool> {
     @Override
     public void serialize(JSONSchemaPropsOrBool jsonSchemaPropsOrBool,
         JsonGenerator jsonGenerator,
-        SerializerProvider serializerProvider) throws IOException {
+        SerializationContext serializationContext) {
       if (jsonSchemaPropsOrBool.getSchema() != null) {
-        jsonGenerator.writeObject(jsonSchemaPropsOrBool.getSchema());
+        jsonGenerator.writePOJO(jsonSchemaPropsOrBool.getSchema());
       } else {
         jsonGenerator.writeBoolean(jsonSchemaPropsOrBool.getAllows());
       }
     }
   }
 
-  public static class Deserializer extends JsonDeserializer<JSONSchemaPropsOrBool> {
+  public static class Deserializer extends ValueDeserializer<JSONSchemaPropsOrBool> {
 
     @Override
     public JSONSchemaPropsOrBool deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
-        throws IOException {
+{
       JSONSchemaPropsOrBoolBuilder builder = new JSONSchemaPropsOrBoolBuilder();
       if (jsonParser.isExpectedStartObjectToken()) {
         builder.withSchema(

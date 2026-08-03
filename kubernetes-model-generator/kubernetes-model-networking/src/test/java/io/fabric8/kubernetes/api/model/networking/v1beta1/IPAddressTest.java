@@ -15,7 +15,8 @@
  */
 package io.fabric8.kubernetes.api.model.networking.v1beta1;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import io.fabric8.kubernetes.api.model.Namespaced;
 import io.fabric8.kubernetes.model.util.Helper;
 import org.junit.jupiter.api.Test;
@@ -25,7 +26,7 @@ import java.io.IOException;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class IPAddressTest {
-  private final ObjectMapper mapper = new ObjectMapper();
+  private final ObjectMapper mapper = new JsonMapper();
 
   @Test
   void isClusterScoped() {

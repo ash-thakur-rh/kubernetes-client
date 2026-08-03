@@ -15,13 +15,13 @@
  */
 package io.fabric8.openshift.api.model;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.BeanDescription;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.deser.BeanDeserializer;
-import com.fasterxml.jackson.databind.deser.ResolvableDeserializer;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.BeanDescription;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.ValueDeserializer;
+import tools.jackson.databind.deser.BeanDeserializer;
+import tools.jackson.databind.deser.ResolvableDeserializer;
 import io.fabric8.kubernetes.model.jackson.UnmatchedFieldTypeModule;
 
 import java.io.IOException;
@@ -29,14 +29,14 @@ import java.io.IOException;
 /**
  * Essentially wraps a {@link BeanDeserializer} to allow for unmatched fields
  */
-public class TemplateDeserializer extends JsonDeserializer<Template> {
+public class TemplateDeserializer extends ValueDeserializer<Template> {
 
   @Override
   public Template deserialize(JsonParser jsonParser, DeserializationContext ctxt) throws IOException {
     JavaType type = ctxt.getConfig().getTypeFactory().constructType(Template.class);
     BeanDescription description = ctxt.getConfig().introspect(type);
 
-    JsonDeserializer<Object> beanDeserializer = ctxt.getFactory().createBeanDeserializer(ctxt, type, description);
+    ValueDeserializer<Object> beanDeserializer = ctxt.getFactory().createBeanDeserializer(ctxt, type, description);
     ((ResolvableDeserializer) beanDeserializer).resolve(ctxt);
 
     boolean inTemplate = false;

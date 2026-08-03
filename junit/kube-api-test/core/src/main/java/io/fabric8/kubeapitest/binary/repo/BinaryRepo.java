@@ -15,8 +15,7 @@
  */
 package io.fabric8.kubeapitest.binary.repo;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import tools.jackson.dataformat.yaml.YAMLMapper;
 import io.fabric8.kubeapitest.KubeAPITestException;
 import io.fabric8.kubeapitest.binary.OSInfo;
 import org.slf4j.Logger;
@@ -37,7 +36,7 @@ public class BinaryRepo {
   private static final Logger logger = LoggerFactory.getLogger(BinaryRepo.class);
 
   private static final String BINARY_INDEX_URL = "https://raw.githubusercontent.com/kubernetes-sigs/controller-tools/HEAD/envtest-releases.yaml";
-  private static final ObjectMapper MAPPER = new ObjectMapper(new YAMLFactory());
+  private static final YAMLMapper MAPPER = new YAMLMapper();
   public static final String TAR_GZ_SUFFIX = ".tar.gz";
 
   private static List<ArchiveDescriptor> objectNames;

@@ -15,7 +15,7 @@
  */
 package io.fabric8.kubernetes.client.server.mock;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import tools.jackson.core.JacksonException;
 import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
 import io.fabric8.kubernetes.api.model.WatchEvent;
 import io.fabric8.kubernetes.client.Watcher;
@@ -174,7 +174,7 @@ class WatchEventsListener extends WebSocketListener {
     } else {
       try {
         return toWebSocketMessage(context, delay, context.getMapper().writeValueAsString(content), toBeRemoved);
-      } catch (JsonProcessingException e) {
+      } catch (JacksonException e) {
         throw new IllegalArgumentException(e);
       }
     }

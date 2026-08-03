@@ -15,7 +15,7 @@
  */
 package io.fabric8.mockwebserver.internal;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import tools.jackson.core.JacksonException;
 import io.fabric8.mockwebserver.Context;
 import io.fabric8.mockwebserver.MockServerException;
 import io.fabric8.mockwebserver.ServerRequest;
@@ -289,7 +289,7 @@ public class MockServerExpectationImpl implements MockServerExpectation {
     } else {
       try {
         return context.getMapper().writeValueAsString(object);
-      } catch (JsonProcessingException e) {
+      } catch (JacksonException e) {
         throw new MockServerException("Exception when mapping Object to String", e);
       }
     }

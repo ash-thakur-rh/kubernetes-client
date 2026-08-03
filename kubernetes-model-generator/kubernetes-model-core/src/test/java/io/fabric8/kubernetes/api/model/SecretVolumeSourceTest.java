@@ -15,7 +15,8 @@
  */
 package io.fabric8.kubernetes.api.model;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import io.fabric8.kubernetes.model.jackson.GoCompatibilityModule;
 import io.fabric8.kubernetes.model.util.Helper;
 import org.assertj.core.api.InstanceOfAssertFactories;
@@ -32,8 +33,7 @@ class SecretVolumeSourceTest {
 
   @BeforeEach
   void setUp() {
-    objectMapper = new ObjectMapper();
-    objectMapper.registerModule(new GoCompatibilityModule());
+    objectMapper = JsonMapper.builder().addModule(new GoCompatibilityModule()).build();
   }
 
   @Test
