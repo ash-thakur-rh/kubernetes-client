@@ -50,10 +50,10 @@ public class BinaryRepo {
   public synchronized Stream<ArchiveDescriptor> listObjectNames() {
     try {
       if (objectNames == null) {
-        var index = MAPPER.readValue(new URL(BINARY_INDEX_URL), BinaryIndex.class);
+        var index = MAPPER.readValue(new URL(BINARY_INDEX_URL).openStream(), BinaryIndex.class);
         objectNames = index.getReleases().values().stream().flatMap(v -> v.values().stream()).map(
             a -> mapSelfLinkToArchiveDescriptor(a.getSelfLink()))
-            .collect(Collectors.toList());
+            .toList();
       }
       return objectNames.stream();
     } catch (IOException e) {
