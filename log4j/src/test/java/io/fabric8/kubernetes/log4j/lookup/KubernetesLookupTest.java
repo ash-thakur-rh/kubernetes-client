@@ -17,6 +17,8 @@ package io.fabric8.kubernetes.log4j.lookup;
 
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
+
+import java.util.Objects;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.ContainerBuilder;
 import io.fabric8.kubernetes.api.model.ContainerStatus;
@@ -58,7 +60,8 @@ class KubernetesLookupTest {
 
   @Test
   void localPod() throws Exception {
-    final Pod pod = objectMapper.readValue(KubernetesLookupTest.class.getResource("/localPod.json"), Pod.class);
+    final Pod pod = objectMapper.readValue(
+        Objects.requireNonNull(KubernetesLookupTest.class.getResource("/localPod.json")).openStream(), Pod.class);
     final Namespace namespace = createNamespace();
     final URL masterUrl = new URL("http://localhost:443/");
     final StrLookup lookup = new KubernetesLookup(pod, namespace, masterUrl);
@@ -85,7 +88,8 @@ class KubernetesLookupTest {
 
   @Test
   void clusterPod() throws Exception {
-    final Pod pod = objectMapper.readValue(KubernetesLookupTest.class.getResource("/clusterPod.json"), Pod.class);
+    final Pod pod = objectMapper.readValue(
+        Objects.requireNonNull(KubernetesLookupTest.class.getResource("/clusterPod.json")).openStream(), Pod.class);
     final Namespace namespace = createNamespace();
     final URL masterUrl = new URL("http://localhost:443/");
     final StrLookup lookup = new KubernetesLookup(pod, namespace, masterUrl);
