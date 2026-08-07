@@ -23,7 +23,6 @@ import tools.jackson.databind.SerializationContext;
 import tools.jackson.databind.ValueDeserializer;
 import tools.jackson.databind.ValueSerializer;
 
-import java.io.IOException;
 import java.util.List;
 
 public class JSONSchemaPropsOrArraySerDe {

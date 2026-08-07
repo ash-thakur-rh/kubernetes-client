@@ -15,10 +15,10 @@
  */
 package io.fabric8.openclustermanagement.api.model.observability.v1beta1;
 
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.json.JsonMapper;
 import io.fabric8.kubernetes.model.util.Helper;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
 

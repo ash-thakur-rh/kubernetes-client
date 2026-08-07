@@ -15,9 +15,9 @@
  */
 package io.fabric8.kubernetes.examples.crds;
 
+import io.fabric8.kubernetes.api.model.KubernetesResource;
 import tools.jackson.databind.JsonDeserializer;
 import tools.jackson.databind.annotation.JsonDeserialize;
-import io.fabric8.kubernetes.api.model.KubernetesResource;
 
 /**
  */

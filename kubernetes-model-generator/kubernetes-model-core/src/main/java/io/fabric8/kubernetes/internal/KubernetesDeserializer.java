@@ -15,6 +15,11 @@
  */
 package io.fabric8.kubernetes.internal;
 
+import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
+import io.fabric8.kubernetes.api.model.HasMetadata;
+import io.fabric8.kubernetes.api.model.KubernetesListBuilder;
+import io.fabric8.kubernetes.api.model.KubernetesResource;
+import io.fabric8.kubernetes.api.model.runtime.RawExtension;
 import tools.jackson.core.JsonParser;
 import tools.jackson.databind.BeanDescription;
 import tools.jackson.databind.DatabindException;
@@ -24,11 +29,6 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ValueDeserializer;
 import tools.jackson.databind.deser.BeanDeserializerFactory;
 import tools.jackson.databind.node.TreeTraversingParser;
-import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
-import io.fabric8.kubernetes.api.model.HasMetadata;
-import io.fabric8.kubernetes.api.model.KubernetesListBuilder;
-import io.fabric8.kubernetes.api.model.KubernetesResource;
-import io.fabric8.kubernetes.api.model.runtime.RawExtension;
 
 import java.util.ArrayList;
 import java.util.Iterator;

@@ -15,14 +15,14 @@
  */
 package io.fabric8.istio.api.telemetry.v1alpha1;
 
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.json.JsonMapper;
 import io.fabric8.istio.api.api.telemetry.v1alpha1.ProviderRef;
 import io.fabric8.istio.api.api.telemetry.v1alpha1.Tracing;
 import io.fabric8.kubernetes.api.model.Namespaced;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.Collections;
 import java.util.Scanner;

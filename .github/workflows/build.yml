@@ -24,6 +24,7 @@ on:
   push:
     branches:
       - main
+      - 'issue-*'
   pull_request:
     paths-ignore:
       - 'doc/**'

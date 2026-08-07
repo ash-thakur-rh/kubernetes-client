@@ -15,15 +15,15 @@
  */
 package io.fabric8.istio.api.extensons.v1alpha1;
 
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.json.JsonMapper;
 import io.fabric8.istio.api.api.extensions.v1alpha1.PluginPhase;
 import io.fabric8.istio.api.extensions.v1alpha1.WasmPlugin;
 import io.fabric8.istio.api.extensions.v1alpha1.WasmPluginBuilder;
 import io.fabric8.kubernetes.api.model.Namespaced;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.Collections;
 import java.util.Map;

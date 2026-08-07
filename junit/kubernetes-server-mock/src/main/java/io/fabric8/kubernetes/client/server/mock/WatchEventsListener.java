@@ -15,7 +15,6 @@
  */
 package io.fabric8.kubernetes.client.server.mock;
 
-import tools.jackson.core.JacksonException;
 import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
 import io.fabric8.kubernetes.api.model.WatchEvent;
 import io.fabric8.kubernetes.client.Watcher;
@@ -27,6 +26,7 @@ import io.fabric8.mockwebserver.http.WebSocket;
 import io.fabric8.mockwebserver.http.WebSocketListener;
 import io.fabric8.mockwebserver.internal.WebSocketMessage;
 import org.slf4j.Logger;
+import tools.jackson.core.JacksonException;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;

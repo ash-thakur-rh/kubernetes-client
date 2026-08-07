@@ -15,13 +15,13 @@
  */
 package io.fabric8.openshift.api.model;
 
+import io.fabric8.kubernetes.model.jackson.UnmatchedFieldTypeModule;
 import tools.jackson.core.JsonParser;
 import tools.jackson.databind.BeanDescription;
 import tools.jackson.databind.DeserializationContext;
 import tools.jackson.databind.JavaType;
 import tools.jackson.databind.ValueDeserializer;
 import tools.jackson.databind.deser.BeanDeserializerFactory;
-import io.fabric8.kubernetes.model.jackson.UnmatchedFieldTypeModule;
 
 /**
  * Essentially wraps a bean deserializer to allow for unmatched fields

@@ -15,10 +15,10 @@
  */
 package io.fabric8.kubernetes.client.dsl.internal;
 
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.node.ObjectNode;
 import io.fabric8.kubernetes.client.utils.KubernetesSerialization;
 import io.fabric8.zjsonpatch.JsonDiff;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ObjectNode;
 
 import java.util.ArrayList;
 import java.util.Iterator;

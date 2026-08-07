@@ -15,11 +15,11 @@
  */
 package io.fabric8.kubeapitest.binary.repo;
 
-import tools.jackson.dataformat.yaml.YAMLMapper;
 import io.fabric8.kubeapitest.KubeAPITestException;
 import io.fabric8.kubeapitest.binary.OSInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.dataformat.yaml.YAMLMapper;
 
 import java.io.File;
 import java.io.IOException;

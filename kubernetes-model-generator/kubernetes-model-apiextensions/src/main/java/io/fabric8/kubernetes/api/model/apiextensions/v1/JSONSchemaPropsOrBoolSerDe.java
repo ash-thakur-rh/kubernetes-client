@@ -22,8 +22,6 @@ import tools.jackson.databind.SerializationContext;
 import tools.jackson.databind.ValueDeserializer;
 import tools.jackson.databind.ValueSerializer;
 
-import java.io.IOException;
-
 public class JSONSchemaPropsOrBoolSerDe {
 
   private JSONSchemaPropsOrBoolSerDe() {
@@ -45,8 +43,7 @@ public class JSONSchemaPropsOrBoolSerDe {
   public static class Deserializer extends ValueDeserializer<JSONSchemaPropsOrBool> {
 
     @Override
-    public JSONSchemaPropsOrBool deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
-{
+    public JSONSchemaPropsOrBool deserialize(JsonParser jsonParser, DeserializationContext deserializationContext) {
       JSONSchemaPropsOrBoolBuilder builder = new JSONSchemaPropsOrBoolBuilder();
       if (jsonParser.isExpectedStartObjectToken()) {
         builder.withSchema(

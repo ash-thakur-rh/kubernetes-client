@@ -15,10 +15,10 @@
  */
 package io.fabric8.kubernetes.client.informers;
 
-import tools.jackson.core.JsonParser;
-import tools.jackson.databind.DatabindException;
 import io.fabric8.kubernetes.client.WatcherException;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DatabindException;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
