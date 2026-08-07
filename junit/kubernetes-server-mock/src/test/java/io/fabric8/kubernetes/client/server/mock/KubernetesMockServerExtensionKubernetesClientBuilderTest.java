@@ -57,8 +57,9 @@ class KubernetesMockServerExtensionKubernetesClientBuilderTest {
 
     @Override
     public void accept(KubernetesClientBuilder builder) {
-      final ObjectMapper customMapper = new JsonMapper();
-      customMapper.addMixIn(ObjectMeta.class, ObjectMetaMixin.class);
+      final ObjectMapper customMapper = JsonMapper.builder()
+          .addMixIn(ObjectMeta.class, ObjectMetaMixin.class)
+          .build();
       builder.withKubernetesSerialization(new KubernetesSerialization(customMapper, true));
     }
 
@@ -75,7 +76,7 @@ class KubernetesMockServerExtensionKubernetesClientBuilderTest {
       }
 
       @Override
-      public void serialize(String s, JsonGenerator jsonGenerator, SerializationContext serializationContext) throws IOException {
+      public void serialize(String s, JsonGenerator jsonGenerator, SerializationContext serializationContext) {
         jsonGenerator.writeString(s + "-extended");
       }
     }

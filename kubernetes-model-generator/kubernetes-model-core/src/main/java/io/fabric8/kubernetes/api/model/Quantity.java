@@ -23,7 +23,6 @@ import tools.jackson.core.JsonGenerator;
 import tools.jackson.core.JsonParser;
 import tools.jackson.databind.DeserializationContext;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.SerializationContext;
 import tools.jackson.databind.ValueDeserializer;
 import tools.jackson.databind.ValueSerializer;
@@ -33,7 +32,6 @@ import io.sundr.builder.annotations.Buildable;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
-import java.io.IOException;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -370,8 +368,7 @@ public class Quantity implements Serializable, Comparable<Quantity> {
     @Override
     public Quantity deserialize(JsonParser jsonParser, DeserializationContext ctxt)
         throws JacksonException {
-      ObjectMapper mapper = (ObjectMapper) jsonParser.objectReadContext();
-      JsonNode node = mapper.readTree(jsonParser);
+      JsonNode node = jsonParser.readValueAsTree();
       Quantity quantity = null;
       if (node.get("amount") != null && node.get("format") != null) {
         quantity = new Quantity(node.get("amount").asText(), node.get("format").asText());

@@ -19,7 +19,6 @@ import tools.jackson.core.JsonGenerator;
 import tools.jackson.core.JsonParser;
 import tools.jackson.databind.DeserializationContext;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.ValueDeserializer;
 import tools.jackson.databind.ValueSerializer;
 import tools.jackson.databind.SerializationContext;
@@ -44,8 +43,7 @@ public class MicroTimeSerDes {
   public static class Deserializer extends ValueDeserializer<MicroTime> {
     @Override
     public MicroTime deserialize(JsonParser jsonParser, DeserializationContext ctxt) {
-      ObjectMapper oc = (ObjectMapper) jsonParser.objectReadContext();
-      JsonNode node = oc.readTree(jsonParser);
+      JsonNode node = jsonParser.readValueAsTree();
       MicroTime microTime = null;
       if (node != null) {
         microTime = new MicroTime(node.asText());

@@ -24,6 +24,7 @@ import tools.jackson.databind.JavaType;
 import tools.jackson.databind.ValueDeserializer;
 import tools.jackson.databind.DatabindException;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.deser.BeanDeserializerFactory;
 import tools.jackson.databind.introspect.BeanPropertyDefinition;
 import tools.jackson.databind.jsontype.NamedType;
 import tools.jackson.databind.node.ObjectNode;
@@ -92,11 +93,17 @@ public class JsonUnwrappedDeserializer<T> extends ValueDeserializer<T> {
         .collect(Collectors.toSet());
     ownPropertyNames.removeAll(description.getIgnoredPropertyNames());
 
+    // Build the bean deserializer directly from the factory to avoid infinite recursion.
+    // findContextualValueDeserializer would resolve @JsonDeserialize(using=JsonUnwrappedDeserializer.class)
+    // and re-enter createContextual, causing StackOverflow.
     @SuppressWarnings("unchecked")
-    ValueDeserializer<Object> rawBeanDeserializer = (ValueDeserializer<Object>) deserializationContext
-        .findContextualValueDeserializer(type, null);
+    ValueDeserializer<Object> rawBeanDeserializer = BeanDeserializerFactory.instance
+        .createBeanDeserializer(deserializationContext, type, description.supplier());
     rawBeanDeserializer.resolve(deserializationContext);
-    beanDeserializer = (ValueDeserializer<T>) rawBeanDeserializer;
+    @SuppressWarnings("unchecked")
+    ValueDeserializer<T> contextual = (ValueDeserializer<T>) rawBeanDeserializer
+        .createContextual(deserializationContext, null);
+    beanDeserializer = contextual;
 
     unwrappedInfos = new ArrayList<>();
     for (BeanPropertyDefinition unwrappedProperty : unwrappedProperties) {

@@ -115,7 +115,7 @@ public class PatchHandler implements KubernetesCrudDispatcherHandler {
 
   // Ensure resource contains all paths affected by the provided patch
   private JsonNode initPaths(JsonNode resource, JsonNode patch) {
-    for (Iterator<JsonNode> it = patch.elements(); it.hasNext();) {
+    for (Iterator<JsonNode> it = patch.values().iterator(); it.hasNext();) {
       final String fullPath = it.next().get(PATH).asText();
       final String[] paths = fullPath.replaceAll("^/", "").split("/");
       JsonNode node = resource;

@@ -42,7 +42,7 @@ public class KubernetesDeserializerForList extends ValueDeserializer<List<Kubern
     }
     final List<KubernetesResource> ret = new ArrayList<>();
     for (JsonNode item : node) {
-      ret.add(kubernetesDeserializer.deserialize(p, item));
+      ret.add(kubernetesDeserializer.deserialize(p, ctxt, item));
     }
     return ret;
   }

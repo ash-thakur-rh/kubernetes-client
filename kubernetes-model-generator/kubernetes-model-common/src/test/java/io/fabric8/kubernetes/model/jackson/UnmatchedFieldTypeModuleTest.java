@@ -162,8 +162,8 @@ class UnmatchedFieldTypeModuleTest {
     final String result = objectMapper.writeValueAsString(exampleWithAnySetter);
     // Then
     assertThat(result).isEqualTo("{" +
-        "\"stringValue\":\"the-string\"," +
         "\"booleanValue\":true," +
+        "\"stringValue\":\"the-string\"," +
         "\"intValue\":\"${intValue}\"," +
         "\"unknownField\":\"unknownValue\"," +
         "\"nested\":\"${nested}\"" +
