@@ -15,14 +15,14 @@
  */
 package io.fabric8.crd.generator.v1beta1;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
 import io.fabric8.crd.generator.AbstractJsonSchema;
 import io.fabric8.kubernetes.api.model.apiextensions.v1beta1.JSONSchemaProps;
 import io.fabric8.kubernetes.api.model.apiextensions.v1beta1.JSONSchemaPropsBuilder;
 import io.fabric8.kubernetes.api.model.apiextensions.v1beta1.ValidationRule;
 import io.fabric8.kubernetes.api.model.apiextensions.v1beta1.ValidationRuleBuilder;
-import io.sundr.model.Property;
+import io.sundr.model.Field;
 import io.sundr.model.TypeDef;
 import io.sundr.model.TypeRef;
 
@@ -72,13 +72,13 @@ public class JsonSchema extends AbstractJsonSchema<JSONSchemaProps, JSONSchemaPr
   }
 
   @Override
-  public void addProperty(Property property, JSONSchemaPropsBuilder builder,
+  public void addProperty(Field property, JSONSchemaPropsBuilder builder,
       JSONSchemaProps schema, SchemaPropsOptions options) {
     if (schema != null) {
       options.getDefault().ifPresent(s -> {
         try {
           schema.setDefault(YAML_MAPPER.readTree(s));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
           throw new IllegalArgumentException("Cannot parse default value: '" + s + "' as valid YAML.");
         }
       });

@@ -19,7 +19,7 @@ import io.fabric8.crd.generator.utils.Types;
 import io.sundr.builder.TypedVisitor;
 import io.sundr.model.AnnotationRef;
 import io.sundr.model.ClassRef;
-import io.sundr.model.Property;
+import io.sundr.model.Field;
 import io.sundr.model.TypeDef;
 import io.sundr.model.TypeDefBuilder;
 
@@ -40,7 +40,7 @@ public class AnnotatedPropertyPathDetector extends TypedVisitor<TypeDefBuilder> 
 
   private final String prefix;
   private final String annotationName;
-  private final List<Property> parents;
+  private final List<Field> parents;
   private final AtomicReference<String> reference;
   private final Deque<Runnable> toRun;
 
@@ -48,7 +48,7 @@ public class AnnotatedPropertyPathDetector extends TypedVisitor<TypeDefBuilder> 
     this(prefix, annotationName, new ArrayList<>(), new AtomicReference<>(), new ArrayDeque<>());
   }
 
-  public AnnotatedPropertyPathDetector(String prefix, String annotationName, List<Property> parents,
+  public AnnotatedPropertyPathDetector(String prefix, String annotationName, List<Field> parents,
       AtomicReference<String> reference, Deque<Runnable> toRun) {
     this.prefix = prefix;
     this.annotationName = annotationName;
@@ -57,7 +57,7 @@ public class AnnotatedPropertyPathDetector extends TypedVisitor<TypeDefBuilder> 
     this.toRun = toRun;
   }
 
-  private static boolean excludePropertyProcessing(Property p) {
+  private static boolean excludePropertyProcessing(Field p) {
     for (AnnotationRef annotation : p.getAnnotations()) {
       if (annotation.getClassRef().getFullyQualifiedName().equals(ANNOTATION_JSON_IGNORE)) {
         return true;
@@ -69,23 +69,23 @@ public class AnnotatedPropertyPathDetector extends TypedVisitor<TypeDefBuilder> 
   @Override
   public void visit(TypeDefBuilder builder) {
     TypeDef type = builder.build();
-    final List<Property> properties = type.getProperties();
+    final List<Field> properties = type.getFields();
     visitProperties(properties);
   }
 
-  private void visitProperties(List<Property> properties) {
-    for (Property p : properties) {
+  private void visitProperties(List<Field> properties) {
+    for (Field p : properties) {
       if (parents.contains(p)) {
         continue;
       }
 
-      List<Property> newParents = new ArrayList<>(parents);
+      List<Field> newParents = new ArrayList<>(parents);
       boolean match = false;
       for (AnnotationRef annotation : p.getAnnotations()) {
         match = annotation.getClassRef().getName().equals(annotationName);
         if (match) {
           newParents.add(p);
-          reference.set(newParents.stream().map(Property::getName).collect(Collectors.joining(DOT, prefix, "")));
+          reference.set(newParents.stream().map(Field::getName).collect(Collectors.joining(DOT, prefix, "")));
           return;
         }
       }

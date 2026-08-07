@@ -15,12 +15,12 @@
  */
 package io.fabric8.crd.generator;
 
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
+import tools.jackson.databind.MapperFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.dataformat.yaml.YAMLFactory;
+import tools.jackson.dataformat.yaml.YAMLMapper;
+import tools.jackson.dataformat.yaml.YAMLWriteFeature;
 import io.fabric8.crd.generator.utils.Types;
 import io.fabric8.crd.generator.v1.CustomResourceHandler;
 import io.fabric8.kubernetes.api.model.HasMetadata;
@@ -62,15 +62,17 @@ public class CRDGenerator {
   private boolean parallel;
   private Map<String, CustomResourceInfo> infos;
 
-  public static final ObjectMapper YAML_MAPPER = JsonMapper.builder(new YAMLFactory()
-      .enable(YAMLGenerator.Feature.MINIMIZE_QUOTES)
-      .enable(YAMLGenerator.Feature.ALWAYS_QUOTE_NUMBERS_AS_STRINGS)
-      .disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER))
-      .configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true)
-      .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
-      .configure(SerializationFeature.INDENT_OUTPUT, true)
+  public static final ObjectMapper YAML_MAPPER = YAMLMapper.builder(
+      YAMLFactory.builder()
+          .enable(YAMLWriteFeature.MINIMIZE_QUOTES)
+          .enable(YAMLWriteFeature.ALWAYS_QUOTE_NUMBERS_AS_STRINGS)
+          .disable(YAMLWriteFeature.WRITE_DOC_START_MARKER)
+          .build())
+      .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
+      .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+      .enable(SerializationFeature.INDENT_OUTPUT)
       .withConfigOverride(Map.class, configOverride -> configOverride.setInclude(construct(NON_NULL, NON_NULL)))
-      .serializationInclusion(NON_EMPTY)
+      .changeDefaultPropertyInclusion(v -> construct(NON_EMPTY, NON_EMPTY))
       .build();
 
   public CRDGenerator() {
