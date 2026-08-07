@@ -15,7 +15,8 @@
  */
 package io.fabric8.openshift.client.server.mock;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import io.fabric8.kubernetes.client.server.mock.EnableKubernetesMockClient;
 import io.fabric8.kubernetes.client.server.mock.KubernetesMockServer;
 import io.fabric8.openshift.api.model.RoleBinding;
@@ -88,7 +89,7 @@ class OpenshiftRoleBindingTest {
     assertEquals(expectedRoleBinding, response);
 
     assertEquals(expectedRoleBinding,
-        new ObjectMapper().readerFor(RoleBinding.class).readValue(server.getLastRequest().getBody().readByteArray()));
+        new JsonMapper().readerFor(RoleBinding.class).readValue(server.getLastRequest().getBody().readByteArray()));
   }
 
   @Test
@@ -109,7 +110,7 @@ class OpenshiftRoleBindingTest {
                 .build());
     assertEquals(expectedRoleBinding, response);
     assertEquals(expectedRoleBinding,
-        new ObjectMapper().readerFor(RoleBinding.class).readValue(server.getLastRequest().getBody().inputStream()));
+        new JsonMapper().readerFor(RoleBinding.class).readValue(server.getLastRequest().getBody().inputStream()));
   }
 
   @Test
@@ -135,7 +136,7 @@ class OpenshiftRoleBindingTest {
     assertEquals(expectedRoleBinding, response);
 
     assertEquals(expectedRoleBinding,
-        new ObjectMapper().readerFor(RoleBinding.class).readValue(server.getLastRequest().getBody().inputStream()));
+        new JsonMapper().readerFor(RoleBinding.class).readValue(server.getLastRequest().getBody().inputStream()));
   }
 
   @Test
@@ -177,7 +178,7 @@ class OpenshiftRoleBindingTest {
     assertEquals(expectedRoleBinding, response);
 
     assertEquals(expectedRoleBinding,
-        new ObjectMapper().readerFor(RoleBinding.class).readValue(server.getLastRequest().getBody().inputStream()));
+        new JsonMapper().readerFor(RoleBinding.class).readValue(server.getLastRequest().getBody().inputStream()));
   }
 
   @Test
@@ -205,7 +206,7 @@ class OpenshiftRoleBindingTest {
     assertEquals(expectedRoleBinding, response);
 
     assertEquals(expectedRoleBinding,
-        new ObjectMapper().readerFor(RoleBinding.class).readValue(server.getLastRequest().getBody().inputStream()));
+        new JsonMapper().readerFor(RoleBinding.class).readValue(server.getLastRequest().getBody().inputStream()));
   }
 
   @Test
@@ -237,7 +238,7 @@ class OpenshiftRoleBindingTest {
     assertEquals(expectedRoleBinding, response);
 
     assertEquals(expectedRoleBinding,
-        new ObjectMapper().readerFor(RoleBinding.class).readValue(server.getLastRequest().getBody().inputStream()));
+        new JsonMapper().readerFor(RoleBinding.class).readValue(server.getLastRequest().getBody().inputStream()));
   }
 
   @Test
@@ -376,7 +377,7 @@ class OpenshiftRoleBindingTest {
             .build());
     assertEquals(expectedRoleBinding, response);
     assertEquals(expectedRoleBinding,
-        new ObjectMapper().readerFor(RoleBinding.class).readValue(server.getLastRequest().getBody().inputStream()));
+        new JsonMapper().readerFor(RoleBinding.class).readValue(server.getLastRequest().getBody().inputStream()));
   }
 
 }

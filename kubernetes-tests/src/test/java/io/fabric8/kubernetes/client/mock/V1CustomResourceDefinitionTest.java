@@ -15,7 +15,8 @@
  */
 package io.fabric8.kubernetes.client.mock;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.KubernetesListBuilder;
 import io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinition;
@@ -128,9 +129,9 @@ public class V1CustomResourceDefinitionTest {
   }
 
   JSONSchemaProps readSchema() throws IOException {
-    ObjectMapper mapper = new ObjectMapper();
+    ObjectMapper mapper = new JsonMapper();
     final URL resource = getClass().getResource("/test-crd-validation-schema.json");
 
-    return mapper.readValue(resource, JSONSchemaProps.class);
+    return mapper.readValue(resource.openStream(), JSONSchemaProps.class);
   }
 }

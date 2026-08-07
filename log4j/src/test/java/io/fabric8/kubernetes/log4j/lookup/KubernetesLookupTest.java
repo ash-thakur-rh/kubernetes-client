@@ -15,7 +15,8 @@
  */
 package io.fabric8.kubernetes.log4j.lookup;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.ContainerBuilder;
 import io.fabric8.kubernetes.api.model.ContainerStatus;
@@ -48,7 +49,7 @@ class KubernetesLookupTest {
   private static final int MAX_CONTAINER_COUNT = 2;
   private static KubernetesClient mockClient;
 
-  private static final ObjectMapper objectMapper = new ObjectMapper();
+  private static final ObjectMapper objectMapper = new JsonMapper();
 
   @AfterEach
   void cleanUp() {

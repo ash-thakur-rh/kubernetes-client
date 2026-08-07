@@ -42,7 +42,7 @@ public class KubernetesDeserializerForMap extends ValueDeserializer<Map<String, 
     }
     final Map<String, KubernetesResource> ret = new java.util.LinkedHashMap<>();
     for (Map.Entry<String, JsonNode> entry : node.properties()) {
-      ret.put(entry.getKey(), kubernetesDeserializer.deserialize(p, entry.getValue()));
+      ret.put(entry.getKey(), kubernetesDeserializer.deserialize(p, ctxt, entry.getValue()));
     }
     return ret;
   }

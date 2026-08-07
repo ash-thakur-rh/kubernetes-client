@@ -15,7 +15,8 @@
  */
 package io.fabric8.openclustermanagement.api.model.cluster.v1beta1;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import io.fabric8.kubernetes.model.util.Helper;
 import org.junit.jupiter.api.Test;
 
@@ -25,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class PlacementDecisionTest {
-  private final ObjectMapper mapper = new ObjectMapper();
+  private final ObjectMapper mapper = new JsonMapper();
 
   @Test
   void deserializationAndSerializationShouldWorkAsExpected() throws IOException {

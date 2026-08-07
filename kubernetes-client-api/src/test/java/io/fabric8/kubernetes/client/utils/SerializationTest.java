@@ -542,9 +542,9 @@ class SerializationTest {
   void yamlMapper_shouldReturnFullyInitializedMapper() {
     tools.jackson.databind.ObjectMapper mapper = Serialization.yamlMapper();
     assertThat(mapper).isNotNull();
-    assertThat(mapper.getRegisteredModuleIds())
+    assertThat(mapper.registeredModules())
         .as("YAML mapper must have GoCompatibilityModule registered (not partially constructed)")
-        .anyMatch(id -> id.toString().contains("GoCompatibility"));
+        .anyMatch(m -> m.getModuleName().contains("GoCompatibility"));
   }
 
   @Test

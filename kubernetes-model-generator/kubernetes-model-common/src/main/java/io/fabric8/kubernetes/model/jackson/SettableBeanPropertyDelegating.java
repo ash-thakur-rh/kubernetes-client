@@ -16,12 +16,14 @@
 package io.fabric8.kubernetes.model.jackson;
 
 import com.fasterxml.jackson.annotation.JacksonInject;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import tools.jackson.core.JsonParser;
 import tools.jackson.databind.DeserializationContext;
 import tools.jackson.databind.JavaType;
 import tools.jackson.databind.DatabindException;
 import tools.jackson.databind.PropertyName;
 import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.cfg.MapperConfig;
 import tools.jackson.databind.deser.NullValueProvider;
 import tools.jackson.databind.deser.SettableAnyProperty;
 import tools.jackson.databind.deser.SettableBeanProperty;
@@ -114,6 +116,14 @@ public class SettableBeanPropertyDelegating extends SettableBeanProperty.Delegat
   @Override
   public PropertyName getWrapperName() {
     return delegate.getWrapperName();
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public JsonInclude.Value findPropertyInclusion(MapperConfig<?> config, Class<?> baseType) {
+    return delegate.findPropertyInclusion(config, baseType);
   }
 
   /**

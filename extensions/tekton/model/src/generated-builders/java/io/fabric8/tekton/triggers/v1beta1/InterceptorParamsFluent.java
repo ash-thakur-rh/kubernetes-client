@@ -1,6 +1,6 @@
 package io.fabric8.tekton.triggers.v1beta1;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import io.fabric8.kubernetes.api.builder.BaseFluent;
 import java.lang.Object;
 import java.lang.String;

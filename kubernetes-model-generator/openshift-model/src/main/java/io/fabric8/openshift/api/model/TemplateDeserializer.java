@@ -20,24 +20,25 @@ import tools.jackson.databind.BeanDescription;
 import tools.jackson.databind.DeserializationContext;
 import tools.jackson.databind.JavaType;
 import tools.jackson.databind.ValueDeserializer;
-import tools.jackson.databind.deser.BeanDeserializer;
-import tools.jackson.databind.deser.ResolvableDeserializer;
+import tools.jackson.databind.deser.BeanDeserializerFactory;
 import io.fabric8.kubernetes.model.jackson.UnmatchedFieldTypeModule;
 
-import java.io.IOException;
-
 /**
- * Essentially wraps a {@link BeanDeserializer} to allow for unmatched fields
+ * Essentially wraps a bean deserializer to allow for unmatched fields
  */
 public class TemplateDeserializer extends ValueDeserializer<Template> {
 
   @Override
-  public Template deserialize(JsonParser jsonParser, DeserializationContext ctxt) throws IOException {
-    JavaType type = ctxt.getConfig().getTypeFactory().constructType(Template.class);
-    BeanDescription description = ctxt.getConfig().introspect(type);
+  public Template deserialize(JsonParser jsonParser, DeserializationContext ctxt) {
+    JavaType type = ctxt.getTypeFactory().constructType(Template.class);
+    BeanDescription description = ctxt.introspectBeanDescriptionForCreation(type);
 
-    ValueDeserializer<Object> beanDeserializer = ctxt.getFactory().createBeanDeserializer(ctxt, type, description);
-    ((ResolvableDeserializer) beanDeserializer).resolve(ctxt);
+    ValueDeserializer<Object> rawDeserializer = BeanDeserializerFactory.instance
+        .createBeanDeserializer(ctxt, type, description.supplier());
+    rawDeserializer.resolve(ctxt);
+    @SuppressWarnings("unchecked")
+    ValueDeserializer<Object> beanDeserializer = (ValueDeserializer<Object>) rawDeserializer
+        .createContextual(ctxt, null);
 
     boolean inTemplate = false;
     if (!UnmatchedFieldTypeModule.isInTemplate()) {

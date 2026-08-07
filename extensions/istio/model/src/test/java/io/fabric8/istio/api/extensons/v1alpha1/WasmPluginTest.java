@@ -15,8 +15,9 @@
  */
 package io.fabric8.istio.api.extensons.v1alpha1;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import io.fabric8.istio.api.api.extensions.v1alpha1.PluginPhase;
 import io.fabric8.istio.api.extensions.v1alpha1.WasmPlugin;
 import io.fabric8.istio.api.extensions.v1alpha1.WasmPluginBuilder;
@@ -32,7 +33,7 @@ import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 class WasmPluginTest {
-  private final ObjectMapper mapper = new ObjectMapper();
+  private final ObjectMapper mapper = new JsonMapper();
 
   @Test
   void hasExpectedApiVersion() {
@@ -55,7 +56,7 @@ class WasmPluginTest {
   }
 
   @Test
-  void deserializationAndSerializationShouldWorkAsExpected() throws JsonProcessingException {
+  void deserializationAndSerializationShouldWorkAsExpected() throws JacksonException {
     // Given
     String originalJson = new Scanner(getClass().getResourceAsStream("/wasmplugin-v1alpha1.json"))
         .useDelimiter("\\A")
