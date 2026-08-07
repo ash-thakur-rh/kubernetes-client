@@ -16,12 +16,6 @@
 package io.fabric8.kubernetes.client.server.mock;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import tools.jackson.core.JsonGenerator;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.SerializationContext;
-import tools.jackson.databind.annotation.JsonSerialize;
-import tools.jackson.databind.json.JsonMapper;
-import tools.jackson.databind.ser.std.StdSerializer;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodBuilder;
@@ -29,8 +23,13 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import io.fabric8.kubernetes.client.utils.KubernetesSerialization;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.annotation.JsonSerialize;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.ser.std.StdSerializer;
 
-import java.io.IOException;
 import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;

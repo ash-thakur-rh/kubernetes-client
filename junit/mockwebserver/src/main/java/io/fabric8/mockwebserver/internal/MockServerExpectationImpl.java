@@ -15,7 +15,6 @@
  */
 package io.fabric8.mockwebserver.internal;
 
-import tools.jackson.core.JacksonException;
 import io.fabric8.mockwebserver.Context;
 import io.fabric8.mockwebserver.MockServerException;
 import io.fabric8.mockwebserver.ServerRequest;
@@ -32,6 +31,7 @@ import io.fabric8.mockwebserver.http.RecordedRequest;
 import io.fabric8.mockwebserver.utils.BodyProvider;
 import io.fabric8.mockwebserver.utils.ResponseProvider;
 import io.fabric8.mockwebserver.utils.ResponseProviders;
+import tools.jackson.core.JacksonException;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;

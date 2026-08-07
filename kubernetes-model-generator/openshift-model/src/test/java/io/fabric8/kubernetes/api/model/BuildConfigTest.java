@@ -15,8 +15,6 @@
  */
 package io.fabric8.kubernetes.api.model;
 
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.json.JsonMapper;
 import io.fabric8.openshift.api.model.BinaryBuildSourceBuilder;
 import io.fabric8.openshift.api.model.BuildConfig;
 import io.fabric8.openshift.api.model.BuildConfigBuilder;
@@ -34,6 +32,8 @@ import io.fabric8.openshift.api.model.SourceControlUserBuilder;
 import io.fabric8.openshift.api.model.WebHookTriggerBuilder;
 import io.fabric8.zjsonpatch.JsonDiff;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.HashMap;
 

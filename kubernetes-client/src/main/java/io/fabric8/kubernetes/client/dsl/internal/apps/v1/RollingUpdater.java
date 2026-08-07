@@ -15,7 +15,6 @@
  */
 package io.fabric8.kubernetes.client.dsl.internal.apps.v1;
 
-import tools.jackson.core.JacksonException;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.LabelSelector;
 import io.fabric8.kubernetes.api.model.Pod;
@@ -39,6 +38,7 @@ import io.fabric8.kubernetes.client.utils.KubernetesSerialization;
 import io.fabric8.kubernetes.client.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.JacksonException;
 
 import java.math.BigInteger;
 import java.security.MessageDigest;

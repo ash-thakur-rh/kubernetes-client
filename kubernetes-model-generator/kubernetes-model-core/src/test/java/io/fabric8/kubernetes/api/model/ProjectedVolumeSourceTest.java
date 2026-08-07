@@ -15,13 +15,13 @@
  */
 package io.fabric8.kubernetes.api.model;
 
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.json.JsonMapper;
 import io.fabric8.kubernetes.model.jackson.GoCompatibilityModule;
 import io.fabric8.kubernetes.model.util.Helper;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
 

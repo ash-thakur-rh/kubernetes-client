@@ -17,6 +17,8 @@ package io.fabric8.kubernetes.api.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import tools.jackson.core.JsonGenerator;
 import tools.jackson.databind.DatabindException;
 import tools.jackson.databind.JavaType;
@@ -25,10 +27,7 @@ import tools.jackson.databind.annotation.JsonDeserialize;
 import tools.jackson.databind.annotation.JsonSerialize;
 import tools.jackson.databind.jsonFormatVisitors.JsonFormatVisitorWrapper;
 import tools.jackson.databind.ser.std.StdSerializer;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
 
-import java.io.IOException;
 import java.text.ParseException;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.Temporal;

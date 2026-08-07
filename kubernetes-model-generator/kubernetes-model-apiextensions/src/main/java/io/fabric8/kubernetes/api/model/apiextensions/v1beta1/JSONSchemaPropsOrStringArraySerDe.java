@@ -23,7 +23,6 @@ import tools.jackson.databind.SerializationContext;
 import tools.jackson.databind.ValueDeserializer;
 import tools.jackson.databind.ValueSerializer;
 
-import java.io.IOException;
 import java.util.List;
 
 public class JSONSchemaPropsOrStringArraySerDe {
@@ -50,8 +49,7 @@ public class JSONSchemaPropsOrStringArraySerDe {
   public static class Deserializer extends ValueDeserializer<JSONSchemaPropsOrStringArray> {
 
     @Override
-    public JSONSchemaPropsOrStringArray deserialize(JsonParser jsonParser, DeserializationContext deserializationContext)
-{
+    public JSONSchemaPropsOrStringArray deserialize(JsonParser jsonParser, DeserializationContext deserializationContext) {
       JSONSchemaPropsOrStringArrayBuilder builder = new JSONSchemaPropsOrStringArrayBuilder();
       if (jsonParser.isExpectedStartObjectToken()) {
         builder.withSchema(

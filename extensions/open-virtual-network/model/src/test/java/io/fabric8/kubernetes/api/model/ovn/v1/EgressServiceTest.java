@@ -15,11 +15,11 @@
  */
 package io.fabric8.kubernetes.api.model.ovn.v1;
 
+import io.fabric8.kubernetes.api.model.Namespaced;
+import org.junit.jupiter.api.Test;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
-import io.fabric8.kubernetes.api.model.Namespaced;
-import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.Scanner;

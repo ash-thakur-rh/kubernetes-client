@@ -15,14 +15,13 @@
  */
 package io.fabric8.kubernetes.internal;
 
+import io.fabric8.kubernetes.api.model.KubernetesResource;
 import tools.jackson.core.JsonParser;
 import tools.jackson.databind.DatabindException;
 import tools.jackson.databind.DeserializationContext;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ValueDeserializer;
-import io.fabric8.kubernetes.api.model.KubernetesResource;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 

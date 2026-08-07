@@ -17,16 +17,15 @@ package io.fabric8.kubernetes.api.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import tools.jackson.core.JsonGenerator;
-import tools.jackson.databind.ValueSerializer;
-import tools.jackson.databind.SerializationContext;
-import tools.jackson.databind.annotation.JsonSerialize;
 import io.sundr.builder.annotations.Buildable;
 import lombok.EqualsAndHashCode;
 import lombok.Setter;
 import lombok.ToString;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ValueSerializer;
+import tools.jackson.databind.annotation.JsonSerialize;
 
-import java.io.IOException;
 import java.io.Serializable;
 
 /**

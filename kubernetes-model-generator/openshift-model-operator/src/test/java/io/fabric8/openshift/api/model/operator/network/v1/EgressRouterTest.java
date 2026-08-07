@@ -15,11 +15,11 @@
  */
 package io.fabric8.openshift.api.model.operator.network.v1;
 
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.json.JsonMapper;
 import io.fabric8.kubernetes.model.util.Helper;
 import io.fabric8.zjsonpatch.JsonDiff;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
 
