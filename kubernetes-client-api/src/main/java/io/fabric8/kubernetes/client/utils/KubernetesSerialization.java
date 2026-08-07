@@ -275,8 +275,8 @@ public class KubernetesSerialization {
         result = mapper.readerFor(type).readValue(bis);
       }
       return result;
-    } catch (IOException e) {
-      throw KubernetesClientException.launderThrowable(e);
+    } catch (IOException | JacksonException e) {
+      throw new KubernetesClientException("An error has occurred.", e);
     }
   }
 
@@ -291,10 +291,14 @@ public class KubernetesSerialization {
     final Iterable<Object> objs = yaml.loadAllFromInputStream(bis);
     for (Object obj : objs) {
       Object value = null;
-      if (obj instanceof Map) {
-        value = mapper.convertValue(obj, type);
-      } else if (obj != null) {
-        value = mapper.convertValue(new RawExtension(obj), type);
+      try {
+        if (obj instanceof Map) {
+          value = mapper.convertValue(obj, type);
+        } else if (obj != null) {
+          value = mapper.convertValue(new RawExtension(obj), type);
+        }
+      } catch (JacksonException e) {
+        throw new IllegalArgumentException(e.getMessage(), e);
       }
       if (value != null) {
         if (result == null) {
