@@ -10,7 +10,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonDeserialize;
 import io.fabric8.kubernetes.api.builder.Editable;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.ContainerPort;
@@ -36,7 +36,7 @@ import lombok.experimental.Accessors;
 /**
  * CapacityRequestPolicyRange defines a valid range for consumable capacity values.<br><p> <br><p>   - If the requested amount is less than Min, it is rounded up to the Min value.<br><p>   - If Step is set and the requested amount is between Min and Max but not aligned with Step,<br><p>     it will be rounded up to the next value equal to Min + (n &#42; Step).<br><p>   - If Step is not set, the requested amount is used as-is if it falls within the range Min to Max (if set).<br><p>   - If the requested or rounded amount exceeds Max (if set), the request does not satisfy the policy,<br><p>     and the device cannot be allocated.
  */
-@JsonDeserialize(using = com.fasterxml.jackson.databind.JsonDeserializer.None.class)
+@JsonDeserialize(using = tools.jackson.databind.ValueDeserializer.None.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
     "max",

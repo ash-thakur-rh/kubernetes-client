@@ -15,9 +15,9 @@
  */
 package io.fabric8.crd.generator.v1;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.TextNode;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.StringNode;
 import io.fabric8.crd.example.annotated.Annotated;
 import io.fabric8.crd.example.basic.Basic;
 import io.fabric8.crd.example.extraction.CollectionCyclicSchemaSwap;
@@ -99,7 +99,7 @@ class JsonSchemaTest {
   }
 
   @Test
-  void shouldAugmentPropertiesSchemaFromAnnotations() throws JsonProcessingException {
+  void shouldAugmentPropertiesSchemaFromAnnotations() throws JacksonException {
     TypeDef annotated = Types.typeDefFrom(Annotated.class);
     JSONSchemaProps schema = JsonSchema.from(annotated);
     assertNotNull(schema);
@@ -127,9 +127,9 @@ class JsonSchemaTest {
     assertEquals(type.apply("integer").withMaximum(5.0).build(), spec.get("max"));
     assertEquals(type.apply("string").withPattern("\\b[1-9]\\b").build(), spec.get("singleDigit"));
     assertEquals(type.apply("string").withNullable(true).build(), spec.get("nullable"));
-    assertEquals(type.apply("string").withDefault(TextNode.valueOf("my-value")).build(), spec.get("defaultValue"));
-    assertEquals(type.apply("string").withDefault(TextNode.valueOf("my-value2")).build(), spec.get("defaultValue2"));
-    assertEquals(type.apply("string").withEnum(TextNode.valueOf("non"), TextNode.valueOf("oui")).build(), spec.get("anEnum"));
+    assertEquals(type.apply("string").withDefault(StringNode.valueOf("my-value")).build(), spec.get("defaultValue"));
+    assertEquals(type.apply("string").withDefault(StringNode.valueOf("my-value2")).build(), spec.get("defaultValue2"));
+    assertEquals(type.apply("string").withEnum(StringNode.valueOf("non"), StringNode.valueOf("oui")).build(), spec.get("anEnum"));
     assertEquals(type.apply("string").build(), spec.get("bool"));
     assertEquals(type.apply("string").build(), spec.get("num"));
     assertEquals(type.apply("string").build(), spec.get("numFloat"));

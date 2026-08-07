@@ -16,9 +16,8 @@
 package io.fabric8.crd.generator;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.module.jsonSchema.JsonSchema;
 import com.fasterxml.jackson.module.jsonSchema.JsonSchemaGenerator;
 import com.fasterxml.jackson.module.jsonSchema.types.ArraySchema.Items;
@@ -29,13 +28,12 @@ import io.fabric8.generator.annotation.ValidationRule;
 import io.fabric8.kubernetes.api.model.Duration;
 import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.Quantity;
-import io.fabric8.kubernetes.client.utils.KubernetesSerialization;
 import io.sundr.builder.internal.functions.TypeAs;
 import io.sundr.model.AnnotationRef;
 import io.sundr.model.ClassRef;
 import io.sundr.model.Method;
 import io.sundr.model.PrimitiveRefBuilder;
-import io.sundr.model.Property;
+import io.sundr.model.Field;
 import io.sundr.model.TypeDef;
 import io.sundr.model.TypeRef;
 import io.sundr.model.functions.GetDefinition;
@@ -151,9 +149,7 @@ public abstract class AbstractJsonSchema<T, B> {
     COMMON_MAPPINGS.put(QUANTITY_REF, INT_OR_STRING_MARKER);
     COMMON_MAPPINGS.put(INT_OR_STRING_REF, INT_OR_STRING_MARKER);
     COMMON_MAPPINGS.put(DURATION_REF, STRING_MARKER);
-    ObjectMapper mapper = new ObjectMapper();
-    // initialize with client defaults
-    new KubernetesSerialization(mapper, false);
+    com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
     GENERATOR = new JsonSchemaGenerator(mapper);
 
     JSON_FORMAT_SHAPE_MAPPING.put(JsonFormat.Shape.STRING, Types.typeDefFrom(String.class).toReference());
@@ -335,7 +331,7 @@ public abstract class AbstractJsonSchema<T, B> {
     // index potential accessors by name for faster lookup
     final Map<String, Method> accessors = indexPotentialAccessors(definition);
 
-    for (Property property : definition.getProperties()) {
+    for (Field property : definition.getFields()) {
       if (isJsonNode) {
         break;
       }
@@ -352,7 +348,7 @@ public abstract class AbstractJsonSchema<T, B> {
         visited = new LinkedHashMap<>();
       }
       final PropertyFacade facade = new PropertyFacade(property, accessors, swapResult.classRef);
-      final Property possiblyRenamedProperty = facade.process();
+      final Field possiblyRenamedProperty = facade.process();
       name = possiblyRenamedProperty.getName();
 
       if (facade.required) {
@@ -437,7 +433,7 @@ public abstract class AbstractJsonSchema<T, B> {
       type = isMethod ? "accessor" : "field";
     }
 
-    static PropertyOrAccessor fromProperty(Property property) {
+    static PropertyOrAccessor fromProperty(Field property) {
       return new PropertyOrAccessor(property.getAnnotations(), property.getName(), property.getName(), false);
     }
 
@@ -580,13 +576,13 @@ public abstract class AbstractJsonSchema<T, B> {
     private boolean required;
     private boolean ignored;
     private boolean preserveUnknownFields;
-    private final Property original;
+    private final Field original;
     private String nameContributedBy;
     private String descriptionContributedBy;
     private TypeRef schemaFrom;
     private List<KubernetesValidationRule> validationRules;
 
-    public PropertyFacade(Property property, Map<String, Method> potentialAccessors, ClassRef schemaSwap) {
+    public PropertyFacade(Field property, Map<String, Method> potentialAccessors, ClassRef schemaSwap) {
       original = property;
       final String capitalized = property.getNameCapitalized();
       final String name = property.getName();
@@ -611,7 +607,7 @@ public abstract class AbstractJsonSchema<T, B> {
       validationRules = new LinkedList<>();
     }
 
-    public Property process() {
+    public Field process() {
       final String name = original.getName();
 
       propertyOrAccessors.forEach(p -> {
@@ -660,7 +656,7 @@ public abstract class AbstractJsonSchema<T, B> {
       TypeRef typeRef = schemaFrom != null ? schemaFrom : original.getTypeRef();
       String finalName = renamedTo != null ? renamedTo : original.getName();
 
-      return new Property(original.getAnnotations(), typeRef, finalName,
+      return new Field(original.getAnnotations(), typeRef, finalName,
           original.getComments(), false, false, original.getModifiers(), original.getAttributes());
     }
   }
@@ -742,7 +738,7 @@ public abstract class AbstractJsonSchema<T, B> {
    * @param property the Property which name might need to be updated
    * @return the updated property name or its original one if it didn't need to be changed
    */
-  private String extractUpdatedNameFromJacksonPropertyIfPresent(Property property) {
+  private String extractUpdatedNameFromJacksonPropertyIfPresent(Field property) {
     final String name = property.getName();
     final boolean ignored = property.getAnnotations().stream()
         .anyMatch(a -> a.getClassRef().getFullyQualifiedName().equals(ANNOTATION_JSON_IGNORE));
@@ -789,7 +785,7 @@ public abstract class AbstractJsonSchema<T, B> {
    * @param builder the builder representing the schema being built
    * @param schema the built schema for the property being added
    */
-  public abstract void addProperty(Property property, B builder, T schema, SchemaPropsOptions options);
+  public abstract void addProperty(Field property, B builder, T schema, SchemaPropsOptions options);
 
   /**
    * Finishes up the process by actually building the final JSON schema based on the provided
@@ -861,8 +857,8 @@ public abstract class AbstractJsonSchema<T, B> {
 
           // check if we're dealing with an enum
           if (def.isEnum()) {
-            final JsonNode[] enumValues = def.getProperties().stream()
-                .filter(Property::isEnumConstant)
+            final JsonNode[] enumValues = def.getFields().stream()
+                .filter(Field::isEnumConstant)
                 .map(this::extractUpdatedNameFromJacksonPropertyIfPresent)
                 .filter(Objects::nonNull)
                 .sorted()

@@ -88,12 +88,12 @@
     <argLine/>
 
     <!-- Core versions -->
-    <sundrio.version>0.230.2</sundrio.version>
+    <sundrio.version>0.300.0</sundrio.version>
     <okhttp.version>5.4.0</okhttp.version>
-    <jackson.version>2.21.4</jackson.version>
+    <jackson.version>3.2.1</jackson.version>
     <jackson.bundle.version>${jackson.version}</jackson.bundle.version>
-    <!-- fix as jackson-annotations version 2.20 was released, Refer: https://github.com/FasterXML/jackson-bom/blob/54f854ba1ce69c5827f8acf6d08ba2d7ce36233c/pom.xml#L53-L62 -->
-    <jackson.bundle.version.annotations>2.21</jackson.bundle.version.annotations>
+    <!-- jackson-annotations is shared between Jackson 2.x and 3.x, uses 2.x groupId and major.minor versioning -->
+    <jackson.bundle.version.annotations>2.22</jackson.bundle.version.annotations>
     <jetty.version>11.0.26</jetty.version>
     <maven-core.version>3.9.16</maven-core.version>
     <maven-plugin-annotations.version>3.15.2</maven-plugin-annotations.version>
@@ -240,8 +240,9 @@
     <module>kubernetes-tests</module>
     <module>uberjar</module>
     <module>generator-annotations</module>
-    <module>crd-generator</module>
-    <module>java-generator</module>
+    <!-- TODO: crd-generator and java-generator skipped for Jackson 3 migration — need jackson-module-jsonSchema replacement, Sundrio 0.300.0 fixes, Jackson 2/3 coexistence, and JsonNode package renames. Will be fixed in a separate PR. -->
+    <!--<module>crd-generator</module>-->
+    <!--<module>java-generator</module>-->
     <module>kubernetes-client-deps-compatibility-tests</module>
     <module>log4j</module>
     <module>kubernetes-examples</module>
@@ -680,11 +681,18 @@
 
       <!-- Jackson dependencies, imported as a BOM -->
       <dependency>
-        <groupId>com.fasterxml.jackson</groupId>
+        <groupId>tools.jackson</groupId>
         <artifactId>jackson-bom</artifactId>
         <version>${jackson.version}</version>
         <scope>import</scope>
         <type>pom</type>
+      </dependency>
+
+      <!-- jackson-module-jsonSchema is removed in Jackson 3, pin version for crd-generator (Phase 2 migration) -->
+      <dependency>
+        <groupId>com.fasterxml.jackson.module</groupId>
+        <artifactId>jackson-module-jsonSchema</artifactId>
+        <version>2.21.5</version>
       </dependency>
 
       <dependency>
@@ -1417,7 +1425,8 @@
                     <includes>
                       <include>io.sundr*:*</include>
                       <include>org.projectlombok:lombok*</include>
-                      <include>com.fasterxml.jackson*:*</include>
+                      <include>tools.jackson*:*</include>
+                      <include>com.fasterxml.jackson.core:jackson-annotations</include>
                       <include>io.fabric8:kubernetes-model*</include>
                       <include>io.fabric8:openshift-model*</include>
                     </includes>
@@ -1550,11 +1559,11 @@
                   <location>${maven.multiModuleProjectDirectory}/doc/javadoc-links/openshift-client</location>
                 </offlineLink>
                 <offlineLink>
-                  <url>${javadoc.links}/com.fasterxml.jackson.core/jackson-databind/${jackson.version}</url>
+                  <url>${javadoc.links}/tools.jackson.core/jackson-databind/${jackson.version}</url>
                   <location>${maven.multiModuleProjectDirectory}/doc/javadoc-links/jackson-databind</location>
                 </offlineLink>
                 <offlineLink>
-                  <url>${javadoc.links}/com.fasterxml.jackson.core/jackson-core/${jackson.version}</url>
+                  <url>${javadoc.links}/tools.jackson.core/jackson-core/${jackson.version}</url>
                   <location>${maven.multiModuleProjectDirectory}/doc/javadoc-links/jackson-core</location>
                 </offlineLink>
                 <offlineLink>
@@ -1684,11 +1693,11 @@
                   <location>${maven.multiModuleProjectDirectory}/doc/javadoc-links/openshift-client</location>
                 </offlineLink>
                 <offlineLink>
-                  <url>${javadoc.links}/com.fasterxml.jackson.core/jackson-databind/${jackson.version}</url>
+                  <url>${javadoc.links}/tools.jackson.core/jackson-databind/${jackson.version}</url>
                   <location>${maven.multiModuleProjectDirectory}/doc/javadoc-links/jackson-databind</location>
                 </offlineLink>
                 <offlineLink>
-                  <url>${javadoc.links}/com.fasterxml.jackson.core/jackson-core/${jackson.version}</url>
+                  <url>${javadoc.links}/tools.jackson.core/jackson-core/${jackson.version}</url>
                   <location>${maven.multiModuleProjectDirectory}/doc/javadoc-links/jackson-core</location>
                 </offlineLink>
                 <offlineLink>

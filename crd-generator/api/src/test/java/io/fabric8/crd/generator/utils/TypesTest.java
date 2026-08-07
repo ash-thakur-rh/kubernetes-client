@@ -24,7 +24,7 @@ import io.fabric8.crd.example.person.Person;
 import io.fabric8.crd.example.webserver.WebServerWithStatusProperty;
 import io.fabric8.crd.generator.utils.Types.SpecAndStatus;
 import io.sundr.model.ClassRef;
-import io.sundr.model.Property;
+import io.sundr.model.Field;
 import io.sundr.model.TypeDef;
 import io.sundr.model.TypeRef;
 import org.junit.jupiter.api.Test;
@@ -41,7 +41,7 @@ public class TypesTest {
   @Test
   void shouldFindStatusProperty() {
     TypeDef def = Types.typeDefFrom(WebServerWithStatusProperty.class);
-    Optional<Property> p = Types.findStatusProperty(def);
+    Optional<Field> p = Types.findStatusProperty(def);
     assertTrue(p.isPresent());
 
     def = Types.typeDefFrom(Basic.class);
@@ -52,9 +52,9 @@ public class TypesTest {
   @Test
   void shouldFindInheritedStatusProperty() {
     final TypeDef def = Types.typeDefFrom(Child.class);
-    final Optional<Property> p = Types.findStatusProperty(def);
+    final Optional<Field> p = Types.findStatusProperty(def);
     assertTrue(p.isPresent());
-    final Property property = p.get();
+    final Field property = p.get();
     final TypeRef typeRef = property.getTypeRef();
     assertTrue(typeRef instanceof ClassRef);
     final ClassRef classRef = (ClassRef) typeRef;
@@ -65,7 +65,7 @@ public class TypesTest {
   @Test
   void shouldHaveAllTheExpectedProperties() {
     final TypeDef def = Types.typeDefFrom(Joke.class);
-    final List<Property> properties = def.getProperties();
+    final List<Field> properties = def.getFields();
     assertEquals(7, properties.size());
   }
 

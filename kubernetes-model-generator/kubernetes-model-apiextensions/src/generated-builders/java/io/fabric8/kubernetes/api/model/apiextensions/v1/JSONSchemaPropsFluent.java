@@ -1,6 +1,6 @@
 package io.fabric8.kubernetes.api.model.apiextensions.v1;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import io.fabric8.kubernetes.api.builder.BaseFluent;
 import io.fabric8.kubernetes.api.builder.Nested;
 import java.lang.Boolean;

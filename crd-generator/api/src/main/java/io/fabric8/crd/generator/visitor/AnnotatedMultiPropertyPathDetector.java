@@ -18,7 +18,7 @@ package io.fabric8.crd.generator.visitor;
 import io.fabric8.crd.generator.utils.Types;
 import io.sundr.builder.TypedVisitor;
 import io.sundr.model.ClassRef;
-import io.sundr.model.Property;
+import io.sundr.model.Field;
 import io.sundr.model.TypeDef;
 import io.sundr.model.TypeDefBuilder;
 
@@ -40,16 +40,16 @@ public class AnnotatedMultiPropertyPathDetector extends TypedVisitor<TypeDefBuil
 
   private final String prefix;
   private final String annotationName;
-  private final List<Property> parents;
-  private final Map<String, Property> properties;
+  private final List<Field> parents;
+  private final Map<String, Field> properties;
   private final Deque<Runnable> toRun;
 
   public AnnotatedMultiPropertyPathDetector(String prefix, String annotationName) {
     this(prefix, annotationName, new ArrayList<>(), new HashMap<>(), new ArrayDeque<>());
   }
 
-  public AnnotatedMultiPropertyPathDetector(String prefix, String annotationName, List<Property> parents,
-      Map<String, Property> properties, Deque<Runnable> toRun) {
+  public AnnotatedMultiPropertyPathDetector(String prefix, String annotationName, List<Field> parents,
+      Map<String, Field> properties, Deque<Runnable> toRun) {
     this.prefix = prefix;
     this.annotationName = annotationName;
     this.parents = parents;
@@ -57,7 +57,7 @@ public class AnnotatedMultiPropertyPathDetector extends TypedVisitor<TypeDefBuil
     this.toRun = toRun;
   }
 
-  private boolean excludePropertyProcessing(Property p) {
+  private boolean excludePropertyProcessing(Field p) {
     return p.getAnnotations().stream()
         .anyMatch(ann -> ann.getClassRef().getFullyQualifiedName().equals(ANNOTATION_JSON_IGNORE));
   }
@@ -65,18 +65,18 @@ public class AnnotatedMultiPropertyPathDetector extends TypedVisitor<TypeDefBuil
   @Override
   public void visit(TypeDefBuilder builder) {
     TypeDef type = builder.build();
-    final List<Property> props = type.getProperties();
-    for (Property p : props) {
+    final List<Field> props = type.getFields();
+    for (Field p : props) {
       if (parents.contains(p)) {
         continue;
       }
 
-      List<Property> newParents = new ArrayList<>(parents);
+      List<Field> newParents = new ArrayList<>(parents);
       boolean match = p.getAnnotations().stream().anyMatch(a -> a.getClassRef().getName().equals(annotationName));
       if (match) {
         newParents.add(p);
         this.properties
-            .put(newParents.stream().map(Property::getName).collect(Collectors.joining(DOT, prefix, "")), p);
+            .put(newParents.stream().map(Field::getName).collect(Collectors.joining(DOT, prefix, "")), p);
       }
     }
 
@@ -85,7 +85,7 @@ public class AnnotatedMultiPropertyPathDetector extends TypedVisitor<TypeDefBuil
         ClassRef classRef = (ClassRef) p.getTypeRef();
         TypeDef propertyType = Types.typeDefFrom(classRef);
         if (!propertyType.isEnum() && !classRef.getPackageName().startsWith("java.")) {
-          List<Property> newParents = new ArrayList<>(parents);
+          List<Field> newParents = new ArrayList<>(parents);
           newParents.add(p);
           toRun.add(() -> new TypeDefBuilder(propertyType)
               .accept(new AnnotatedMultiPropertyPathDetector(prefix, annotationName, newParents, properties, toRun)));
@@ -104,7 +104,7 @@ public class AnnotatedMultiPropertyPathDetector extends TypedVisitor<TypeDefBuil
     return properties.keySet();
   }
 
-  public Map<String, Property> getProperties() {
+  public Map<String, Field> getProperties() {
     return properties;
   }
 }
