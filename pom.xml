@@ -240,7 +240,8 @@
     <module>kubernetes-tests</module>
     <module>uberjar</module>
     <module>generator-annotations</module>
-    <module>crd-generator</module>
+    <!-- TODO: crd-generator skipped for Jackson 3 migration — needs jackson-module-jsonSchema replacement, Sundrio 0.300.0 fixes, and Jackson 2/3 coexistence. Will be fixed in a separate PR. -->
+    <!--<module>crd-generator</module>-->
     <module>java-generator</module>
     <module>kubernetes-client-deps-compatibility-tests</module>
     <module>log4j</module>
