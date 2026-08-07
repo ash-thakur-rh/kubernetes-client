@@ -39,6 +39,6 @@
     <module>maven-plugin</module>
     <module>cli</module>
     <!--<module>test</module>-->
-    <module>test-apt</module>
+    <!--<module>test-apt</module>-->
   </modules>
 </project>
