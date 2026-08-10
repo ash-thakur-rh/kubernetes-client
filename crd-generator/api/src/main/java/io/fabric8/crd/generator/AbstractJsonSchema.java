@@ -18,9 +18,10 @@ package io.fabric8.crd.generator;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.module.jsonSchema.JsonSchema;
-import com.fasterxml.jackson.module.jsonSchema.JsonSchemaGenerator;
-import com.fasterxml.jackson.module.jsonSchema.types.ArraySchema.Items;
+import tools.jackson.databind.DatabindException;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.jsonFormatVisitors.JsonFormatVisitorWrapper;
 import io.fabric8.crd.generator.InternalSchemaSwaps.SwapResult;
 import io.fabric8.crd.generator.annotation.SchemaSwap;
 import io.fabric8.crd.generator.utils.Types;
@@ -130,7 +131,7 @@ public abstract class AbstractJsonSchema<T, B> {
   public static final String JSON_NODE_TYPE = "com.fasterxml.jackson.databind.JsonNode";
   public static final String ANY_TYPE = "io.fabric8.kubernetes.api.model.AnyType";
 
-  private static final JsonSchemaGenerator GENERATOR;
+  private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final Set<String> COMPLEX_JAVA_TYPES = new HashSet<>();
 
   static {
@@ -149,8 +150,6 @@ public abstract class AbstractJsonSchema<T, B> {
     COMMON_MAPPINGS.put(QUANTITY_REF, INT_OR_STRING_MARKER);
     COMMON_MAPPINGS.put(INT_OR_STRING_REF, INT_OR_STRING_MARKER);
     COMMON_MAPPINGS.put(DURATION_REF, STRING_MARKER);
-    com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-    GENERATOR = new JsonSchemaGenerator(mapper);
 
     JSON_FORMAT_SHAPE_MAPPING.put(JsonFormat.Shape.STRING, Types.typeDefFrom(String.class).toReference());
   }
@@ -903,22 +902,16 @@ public abstract class AbstractJsonSchema<T, B> {
     boolean array = false;
     try {
       Class<?> clazz = Class.forName(fullyQualifiedName);
-      JsonSchema schema = GENERATOR.generateSchema(clazz);
-      if (schema.isArraySchema()) {
-        Items items = schema.asArraySchema().getItems();
-        if (items.isSingleItems()) {
+      JavaType javaType = MAPPER.constructType(clazz);
+
+      if (javaType.isArrayType() || javaType.isCollectionLikeType()) {
+        JavaType contentType = javaType.getContentType();
+        if (contentType != null) {
           array = true;
-          schema = items.asSingleItems().getSchema();
+          mapping = detectJsonType(contentType.getRawClass());
         }
-      }
-      if (schema.isIntegerSchema()) {
-        mapping = INTEGER_MARKER;
-      } else if (schema.isNumberSchema()) {
-        mapping = NUMBER_MARKER;
-      } else if (schema.isBooleanSchema()) {
-        mapping = BOOLEAN_MARKER;
-      } else if (schema.isStringSchema()) {
-        mapping = STRING_MARKER;
+      } else {
+        mapping = detectJsonType(clazz);
       }
     } catch (Exception e) {
       logger.debug(
@@ -936,6 +929,40 @@ public abstract class AbstractJsonSchema<T, B> {
 
     COMPLEX_JAVA_TYPES.add(fullyQualifiedName);
     return null;
+  }
+
+  private static String detectJsonType(Class<?> clazz) {
+    String[] result = { null };
+    try {
+      MAPPER.acceptJsonFormatVisitor(clazz, new JsonFormatVisitorWrapper.Base() {
+        @Override
+        public tools.jackson.databind.jsonFormatVisitors.JsonIntegerFormatVisitor expectIntegerFormat(JavaType type) {
+          result[0] = INTEGER_MARKER;
+          return null;
+        }
+
+        @Override
+        public tools.jackson.databind.jsonFormatVisitors.JsonNumberFormatVisitor expectNumberFormat(JavaType type) {
+          result[0] = NUMBER_MARKER;
+          return null;
+        }
+
+        @Override
+        public tools.jackson.databind.jsonFormatVisitors.JsonBooleanFormatVisitor expectBooleanFormat(JavaType type) {
+          result[0] = BOOLEAN_MARKER;
+          return null;
+        }
+
+        @Override
+        public tools.jackson.databind.jsonFormatVisitors.JsonStringFormatVisitor expectStringFormat(JavaType type) {
+          result[0] = STRING_MARKER;
+          return null;
+        }
+      });
+    } catch (DatabindException e) {
+      // fall through — type will be treated as complex
+    }
+    return result[0];
   }
 
   /**
