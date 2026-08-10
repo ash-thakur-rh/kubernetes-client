@@ -23,8 +23,8 @@ import io.sundr.model.*;
 import io.sundr.model.functions.GetDefinition;
 import io.sundr.model.repo.DefinitionRepository;
 import io.sundr.model.utils.TypeArguments;
+import io.sundr.model.visitors.ApplyTypeParamMappingToField;
 import io.sundr.model.visitors.ApplyTypeParamMappingToMethod;
-import io.sundr.model.visitors.ApplyTypeParamMappingToProperty;
 import io.sundr.model.visitors.ApplyTypeParamMappingToTypeArguments;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,7 +81,7 @@ public class Types {
     } else {
       return new TypeDefBuilder(definition)
           .accept(new ApplyTypeParamMappingToTypeArguments(mappings)) // existing type arguments must be handled before methods and properties
-          .accept(new ApplyTypeParamMappingToProperty(mappings),
+          .accept(new ApplyTypeParamMappingToField(mappings),
               new ApplyTypeParamMappingToMethod(mappings))
           .build();
     }

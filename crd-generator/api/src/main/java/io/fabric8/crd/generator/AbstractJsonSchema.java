@@ -128,7 +128,7 @@ public abstract class AbstractJsonSchema<T, B> {
   public static final String ANNOTATION_VALIDATION_RULE = "io.fabric8.generator.annotation.ValidationRule";
   public static final String ANNOTATION_VALIDATION_RULES = "io.fabric8.generator.annotation.ValidationRules";
 
-  public static final String JSON_NODE_TYPE = "com.fasterxml.jackson.databind.JsonNode";
+  public static final String JSON_NODE_TYPE = "tools.jackson.databind.JsonNode";
   public static final String ANY_TYPE = "io.fabric8.kubernetes.api.model.AnyType";
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
