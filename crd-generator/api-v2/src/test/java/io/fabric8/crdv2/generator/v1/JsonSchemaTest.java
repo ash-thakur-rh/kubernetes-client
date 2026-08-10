@@ -23,7 +23,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import tools.jackson.core.JsonGenerator;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.SerializationContext;
-import com.fasterxml.jackson.annotation.JsonSerialize;
+import tools.jackson.databind.annotation.JsonSerialize;
 import tools.jackson.databind.node.ObjectNode;
 import tools.jackson.databind.node.StringNode;
 import tools.jackson.databind.ser.std.StdSerializer;
