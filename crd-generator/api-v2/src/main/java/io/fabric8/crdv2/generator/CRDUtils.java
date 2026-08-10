@@ -15,10 +15,10 @@
  */
 package io.fabric8.crdv2.generator;
 
-import com.fasterxml.jackson.databind.BeanDescription;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationConfig;
-import com.fasterxml.jackson.databind.introspect.BeanPropertyDefinition;
+import tools.jackson.databind.BeanDescription;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationConfig;
+import tools.jackson.databind.introspect.BeanPropertyDefinition;
 import io.fabric8.crd.generator.annotation.Annotations;
 import io.fabric8.crd.generator.annotation.Labels;
 

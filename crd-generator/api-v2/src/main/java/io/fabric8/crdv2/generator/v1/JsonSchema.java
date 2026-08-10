@@ -15,7 +15,7 @@
  */
 package io.fabric8.crdv2.generator.v1;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import io.fabric8.crdv2.generator.AbstractJsonSchema;
 import io.fabric8.crdv2.generator.KubernetesJSONSchemaProps;
 import io.fabric8.crdv2.generator.KubernetesValidationRule;
