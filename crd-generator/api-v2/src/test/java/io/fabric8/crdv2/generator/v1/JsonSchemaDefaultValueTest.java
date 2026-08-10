@@ -16,6 +16,10 @@
 package io.fabric8.crdv2.generator.v1;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.fabric8.generator.annotation.Default;
+import org.assertj.core.api.InstanceOfAssertFactories;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.BooleanNode;
@@ -23,10 +27,6 @@ import tools.jackson.databind.node.DoubleNode;
 import tools.jackson.databind.node.FloatNode;
 import tools.jackson.databind.node.IntNode;
 import tools.jackson.databind.node.LongNode;
-import io.fabric8.generator.annotation.Default;
-import org.assertj.core.api.InstanceOfAssertFactories;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

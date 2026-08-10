@@ -15,8 +15,6 @@
  */
 package io.fabric8.crd.generator.v1beta1;
 
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.JsonNode;
 import io.fabric8.crd.generator.AbstractJsonSchema;
 import io.fabric8.kubernetes.api.model.apiextensions.v1beta1.JSONSchemaProps;
 import io.fabric8.kubernetes.api.model.apiextensions.v1beta1.JSONSchemaPropsBuilder;
@@ -25,6 +23,8 @@ import io.fabric8.kubernetes.api.model.apiextensions.v1beta1.ValidationRuleBuild
 import io.sundr.model.Field;
 import io.sundr.model.TypeDef;
 import io.sundr.model.TypeRef;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
 
 import java.util.ArrayList;
 import java.util.List;

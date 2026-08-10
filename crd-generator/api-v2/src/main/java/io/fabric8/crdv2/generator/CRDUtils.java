@@ -15,6 +15,8 @@
  */
 package io.fabric8.crdv2.generator;
 
+import io.fabric8.crd.generator.annotation.Annotations;
+import io.fabric8.crd.generator.annotation.Labels;
 import tools.jackson.databind.BeanDescription;
 import tools.jackson.databind.JavaType;
 import tools.jackson.databind.ObjectMapper;
@@ -22,8 +24,6 @@ import tools.jackson.databind.SerializationConfig;
 import tools.jackson.databind.introspect.AnnotatedClass;
 import tools.jackson.databind.introspect.BeanPropertyDefinition;
 import tools.jackson.databind.introspect.ClassIntrospector;
-import io.fabric8.crd.generator.annotation.Annotations;
-import io.fabric8.crd.generator.annotation.Labels;
 
 import java.util.HashMap;
 import java.util.Map;

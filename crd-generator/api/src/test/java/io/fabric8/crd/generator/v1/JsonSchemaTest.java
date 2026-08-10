@@ -15,9 +15,6 @@
  */
 package io.fabric8.crd.generator.v1;
 
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.node.StringNode;
 import io.fabric8.crd.example.annotated.Annotated;
 import io.fabric8.crd.example.basic.Basic;
 import io.fabric8.crd.example.extraction.CollectionCyclicSchemaSwap;
@@ -37,6 +34,9 @@ import io.fabric8.kubernetes.api.model.apiextensions.v1.JSONSchemaPropsBuilder;
 import io.fabric8.kubernetes.api.model.apiextensions.v1.ValidationRule;
 import io.sundr.model.TypeDef;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.StringNode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -129,7 +129,8 @@ class JsonSchemaTest {
     assertEquals(type.apply("string").withNullable(true).build(), spec.get("nullable"));
     assertEquals(type.apply("string").withDefault(StringNode.valueOf("my-value")).build(), spec.get("defaultValue"));
     assertEquals(type.apply("string").withDefault(StringNode.valueOf("my-value2")).build(), spec.get("defaultValue2"));
-    assertEquals(type.apply("string").withEnum(StringNode.valueOf("non"), StringNode.valueOf("oui")).build(), spec.get("anEnum"));
+    assertEquals(type.apply("string").withEnum(StringNode.valueOf("non"), StringNode.valueOf("oui")).build(),
+        spec.get("anEnum"));
     assertEquals(type.apply("string").build(), spec.get("bool"));
     assertEquals(type.apply("string").build(), spec.get("num"));
     assertEquals(type.apply("string").build(), spec.get("numFloat"));

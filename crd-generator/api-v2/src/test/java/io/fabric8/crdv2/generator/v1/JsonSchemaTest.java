@@ -20,13 +20,6 @@ import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
-import tools.jackson.core.JsonGenerator;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.SerializationContext;
-import tools.jackson.databind.annotation.JsonSerialize;
-import tools.jackson.databind.node.ObjectNode;
-import tools.jackson.databind.node.StringNode;
-import tools.jackson.databind.ser.std.StdSerializer;
 import io.fabric8.crd.generator.annotation.PreserveUnknownFields;
 import io.fabric8.crd.generator.annotation.SchemaSwap;
 import io.fabric8.crdv2.example.annotated.Annotated;
@@ -52,6 +45,13 @@ import io.fabric8.kubernetes.api.model.apiextensions.v1.ValidationRule;
 import io.fabric8.kubernetes.api.model.coordination.v1.LeaseSpec;
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Node;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.annotation.JsonSerialize;
+import tools.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.node.StringNode;
+import tools.jackson.databind.ser.std.StdSerializer;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -142,7 +142,8 @@ class JsonSchemaTest {
     assertEquals(type.apply("string").withNullable(true).build(), spec.get("nullable"));
     assertEquals(type.apply("string").withDefault(StringNode.valueOf("my-value")).build(), spec.get("defaultValue"));
     assertEquals(type.apply("string").withDefault(StringNode.valueOf("my-value2")).build(), spec.get("defaultValue2"));
-    assertEquals(type.apply("string").withEnum(StringNode.valueOf("non"), StringNode.valueOf("oui")).build(), spec.get("anEnum"));
+    assertEquals(type.apply("string").withEnum(StringNode.valueOf("non"), StringNode.valueOf("oui")).build(),
+        spec.get("anEnum"));
     assertEquals(type.apply("string").withFormat("date-time").build(), spec.get("issuedAt"));
     // the shape does not influence the type in these cases
     assertEquals(type.apply("string").build(), spec.get("bool"));

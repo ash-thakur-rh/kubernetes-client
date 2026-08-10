@@ -356,8 +356,8 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
       // Fall back to @JsonProperty(defaultValue = "...")
       Optional<String> jsonPropertyDefault = ofNullable(
           fieldScope.getAnnotationConsideringFieldAndGetter(JsonProperty.class))
-              .map(JsonProperty::defaultValue)
-              .filter(v -> !v.isEmpty());
+          .map(JsonProperty::defaultValue)
+          .filter(v -> !v.isEmpty());
 
       boolean fromDefaultAnnotation = defaultAnnotationValue.isPresent();
       String value = defaultAnnotationValue.or(() -> jsonPropertyDefault).orElse(null);

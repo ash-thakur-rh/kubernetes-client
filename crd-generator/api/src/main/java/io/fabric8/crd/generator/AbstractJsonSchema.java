@@ -16,12 +16,6 @@
 package io.fabric8.crd.generator;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.node.JsonNodeFactory;
-import tools.jackson.databind.DatabindException;
-import tools.jackson.databind.JavaType;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.jsonFormatVisitors.JsonFormatVisitorWrapper;
 import io.fabric8.crd.generator.InternalSchemaSwaps.SwapResult;
 import io.fabric8.crd.generator.annotation.SchemaSwap;
 import io.fabric8.crd.generator.utils.Types;
@@ -32,15 +26,21 @@ import io.fabric8.kubernetes.api.model.Quantity;
 import io.sundr.builder.internal.functions.TypeAs;
 import io.sundr.model.AnnotationRef;
 import io.sundr.model.ClassRef;
+import io.sundr.model.Field;
 import io.sundr.model.Method;
 import io.sundr.model.PrimitiveRefBuilder;
-import io.sundr.model.Field;
 import io.sundr.model.TypeDef;
 import io.sundr.model.TypeRef;
 import io.sundr.model.functions.GetDefinition;
 import io.sundr.utils.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.databind.DatabindException;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.jsonFormatVisitors.JsonFormatVisitorWrapper;
+import tools.jackson.databind.node.JsonNodeFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
