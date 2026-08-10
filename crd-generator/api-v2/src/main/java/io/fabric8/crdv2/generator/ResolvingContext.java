@@ -16,83 +16,47 @@
 
 package io.fabric8.crdv2.generator;
 
-import com.fasterxml.jackson.databind.BeanProperty;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.jsonFormatVisitors.JsonObjectFormatVisitor;
-import com.fasterxml.jackson.module.jsonSchema.JsonSchema;
-import com.fasterxml.jackson.module.jsonSchema.JsonSchemaGenerator;
-import com.fasterxml.jackson.module.jsonSchema.factories.JsonSchemaFactory;
-import com.fasterxml.jackson.module.jsonSchema.factories.SchemaFactoryWrapper;
-import com.fasterxml.jackson.module.jsonSchema.factories.VisitorContext;
-import com.fasterxml.jackson.module.jsonSchema.factories.WrapperFactory;
-import com.fasterxml.jackson.module.jsonSchema.types.ObjectSchema;
+import com.github.victools.jsonschema.generator.CustomDefinition;
+import com.github.victools.jsonschema.generator.FieldScope;
+import com.github.victools.jsonschema.generator.Option;
+import com.github.victools.jsonschema.generator.OptionPreset;
+import com.github.victools.jsonschema.generator.SchemaGenerator;
+import com.github.victools.jsonschema.generator.SchemaGeneratorConfig;
+import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
+import com.github.victools.jsonschema.generator.SchemaVersion;
+import com.github.victools.jsonschema.module.jackson.JacksonModule;
+import com.github.victools.jsonschema.module.jackson.JacksonOption;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
+import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
+import io.fabric8.kubernetes.api.model.HasMetadata;
+import io.fabric8.kubernetes.api.model.IntOrString;
+import io.fabric8.kubernetes.api.model.Quantity;
+import io.fabric8.kubernetes.api.model.runtime.RawExtension;
 import io.fabric8.kubernetes.client.utils.KubernetesSerialization;
 import io.fabric8.kubernetes.client.utils.YamlDumpSettings;
 import io.fabric8.kubernetes.client.utils.YamlDumpSettingsBuilder;
 
-import java.util.LinkedHashMap;
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Encapsulates the stateful Jackson details that allow for crd to be fully resolved by our logic
- * - holds an association of uris to already generated jackson schemas
- * - holds a Jackson SchemaGenerator which is not thread-safe
+ * Encapsulates the stateful schema generation context for CRD generation.
+ * Uses victools jsonschema-generator to produce JSON schemas from Java classes.
  */
 public class ResolvingContext {
 
-  static final class GeneratorObjectSchema extends ObjectSchema {
-
-    JavaType javaType;
-    Map<String, BeanProperty> beanProperties = new LinkedHashMap<>();
-
-    @Override
-    public void putOptionalProperty(BeanProperty property, JsonSchema jsonSchema) {
-      beanProperties.put(property.getName(), property);
-      super.putOptionalProperty(property, jsonSchema);
-    }
-
-    @Override
-    public JsonSchema putProperty(BeanProperty property, JsonSchema value) {
-      beanProperties.put(property.getName(), property);
-      return super.putProperty(property, value);
-    }
-
-  }
-
-  private final class KubernetesSchemaFactoryWrapper extends SchemaFactoryWrapper {
-
-    private KubernetesSchemaFactoryWrapper(SerializerProvider p, WrapperFactory wrapperFactory) {
-      super(p, wrapperFactory);
-      this.schemaProvider = new JsonSchemaFactory() {
-
-        @Override
-        public ObjectSchema objectSchema() {
-          return new GeneratorObjectSchema();
-        }
-
-      };
-    }
-
-    @Override
-    public JsonObjectFormatVisitor expectObjectFormat(JavaType convertedType) {
-      // TODO: jackson should pass in directly here if there's an anyGetter / setter
-      // so that we may directly mark preserve unknown
-      JsonObjectFormatVisitor result = super.expectObjectFormat(convertedType);
-      ((GeneratorObjectSchema) schema).javaType = convertedType;
-      uriToJacksonSchema.putIfAbsent(this.visitorContext.getSeenSchemaUri(convertedType), (GeneratorObjectSchema) schema);
-      return result;
-    }
-  }
-
-  final JsonSchemaGenerator generator;
   final ObjectMapper objectMapper;
   final KubernetesSerialization kubernetesSerialization;
-  final Map<String, GeneratorObjectSchema> uriToJacksonSchema;
   final boolean implicitPreserveUnknownFields;
+
+  // Captured per-property metadata during schema generation
+  // Key: declaringClassName + ":" + jsonPropertyName
+  private final Map<String, FieldScope> fieldScopes = new ConcurrentHashMap<>();
+
+  // $defs from the last toJsonSchema() call
+  private Map<String, ObjectNode> defs = Collections.emptyMap();
 
   private static ObjectMapper OBJECT_MAPPER;
 
@@ -112,44 +76,97 @@ public class ResolvingContext {
   }
 
   public ResolvingContext forkContext() {
-    return new ResolvingContext(objectMapper, kubernetesSerialization, uriToJacksonSchema, implicitPreserveUnknownFields);
+    return new ResolvingContext(objectMapper, kubernetesSerialization, implicitPreserveUnknownFields);
   }
 
   public ResolvingContext(ObjectMapper mapper, KubernetesSerialization kubernetesSerialization,
       boolean implicitPreserveUnknownFields) {
-    this(mapper, kubernetesSerialization, new ConcurrentHashMap<>(), implicitPreserveUnknownFields);
-  }
-
-  private ResolvingContext(ObjectMapper mapper, KubernetesSerialization kubernetesSerialization,
-      Map<String, GeneratorObjectSchema> uriToJacksonSchema,
-      boolean implicitPreserveUnknownFields) {
-    this.uriToJacksonSchema = uriToJacksonSchema;
     this.objectMapper = mapper;
     this.kubernetesSerialization = kubernetesSerialization;
     this.implicitPreserveUnknownFields = implicitPreserveUnknownFields;
-    generator = new JsonSchemaGenerator(mapper, new WrapperFactory() {
+  }
 
-      @Override
-      public SchemaFactoryWrapper getWrapper(SerializerProvider provider) {
-        return new KubernetesSchemaFactoryWrapper(provider, this);
+  ObjectNode toJsonSchema(Class<?> clazz) {
+    // Clear state from previous generation
+    fieldScopes.clear();
+
+    SchemaGeneratorConfigBuilder configBuilder = new SchemaGeneratorConfigBuilder(
+        objectMapper,
+        SchemaVersion.DRAFT_2020_12,
+        OptionPreset.PLAIN_JSON);
+
+    // Jackson module to respect Jackson annotations on model classes
+    configBuilder.with(new JacksonModule(JacksonOption.FLATTENED_ENUMS_FROM_JSONPROPERTY));
+
+    // Enable options
+    configBuilder.with(
+        Option.MAP_VALUES_AS_ADDITIONAL_PROPERTIES,
+        Option.FLATTENED_ENUMS);
+
+    // Custom type definitions for Kubernetes special types
+    configBuilder.with((javaType, context) -> {
+      Class<?> raw = javaType.getErasedType();
+      if (raw == IntOrString.class || raw == Quantity.class) {
+        ObjectNode schema = context.getGeneratorConfig().createObjectNode();
+        schema.put("x-kubernetes-int-or-string", true);
+        return new CustomDefinition(schema,
+            CustomDefinition.DefinitionType.INLINE,
+            CustomDefinition.AttributeInclusion.NO);
       }
-
-      @Override
-      public SchemaFactoryWrapper getWrapper(SerializerProvider provider, VisitorContext rvc) {
-        SchemaFactoryWrapper wrapper = getWrapper(provider);
-        wrapper.setVisitorContext(rvc);
-        return wrapper;
+      if (raw == RawExtension.class || raw == GenericKubernetesResource.class) {
+        ObjectNode schema = context.getGeneratorConfig().createObjectNode();
+        schema.put("x-kubernetes-embedded-resource", true);
+        return new CustomDefinition(schema,
+            CustomDefinition.DefinitionType.INLINE,
+            CustomDefinition.AttributeInclusion.NO);
       }
-
+      if (raw == ObjectNode.class) {
+        ObjectNode schema = context.getGeneratorConfig().createObjectNode();
+        schema.put("type", "object");
+        return new CustomDefinition(schema,
+            CustomDefinition.DefinitionType.INLINE,
+            CustomDefinition.AttributeInclusion.NO);
+      }
+      if (HasMetadata.class.isAssignableFrom(raw) && raw.isInterface()) {
+        ObjectNode schema = context.getGeneratorConfig().createObjectNode();
+        schema.put("x-kubernetes-embedded-resource", true);
+        return new CustomDefinition(schema,
+            CustomDefinition.DefinitionType.INLINE,
+            CustomDefinition.AttributeInclusion.NO);
+      }
+      return null;
     });
-  }
 
-  JsonSchema toJsonSchema(Class<?> clazz) {
-    try {
-      return generator.generateSchema(clazz);
-    } catch (JsonMappingException e) {
-      throw new RuntimeException(e);
+    // Capture FieldScope per property for annotation access in AbstractJsonSchema
+    configBuilder.forFields()
+        .withInstanceAttributeOverride((propSchema, field, context) -> {
+          String key = field.getDeclaringType().getErasedType().getName()
+              + ":" + field.getSchemaPropertyName();
+          fieldScopes.put(key, field);
+        });
+
+    SchemaGeneratorConfig config = configBuilder.build();
+    SchemaGenerator generator = new SchemaGenerator(config);
+    ObjectNode schema = generator.generateSchema(clazz);
+
+    // Extract $defs for $ref resolution
+    if (schema.has("$defs")) {
+      ObjectNode defsNode = (ObjectNode) schema.get("$defs");
+      Map<String, ObjectNode> extractedDefs = new ConcurrentHashMap<>();
+      defsNode.properties().forEach(entry -> extractedDefs.put("#/$defs/" + entry.getKey(), (ObjectNode) entry.getValue()));
+      this.defs = extractedDefs;
+    } else {
+      this.defs = Collections.emptyMap();
     }
+
+    return schema;
   }
 
+  FieldScope getFieldScope(String declaringClassName, String propertyName) {
+    return fieldScopes.get(declaringClassName + ":" + propertyName);
+  }
+
+  Map<String, ObjectNode> getDefs() {
+    return defs;
+  }
 }
