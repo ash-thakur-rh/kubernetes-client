@@ -26,8 +26,10 @@ import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
 import com.github.victools.jsonschema.generator.SchemaVersion;
 import com.github.victools.jsonschema.module.jackson.JacksonModule;
 import com.github.victools.jsonschema.module.jackson.JacksonOption;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
+import io.fabric8.kubernetes.api.model.AnyType;
 import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.IntOrString;
@@ -58,6 +60,9 @@ public class ResolvingContext {
   // $defs from the last toJsonSchema() call
   private Map<String, ObjectNode> defs = Collections.emptyMap();
 
+  // Root schema from the last toJsonSchema() call (for resolving "#" self-references)
+  private ObjectNode rootSchema;
+
   private static ObjectMapper OBJECT_MAPPER;
 
   public static ResolvingContext defaultResolvingContext(boolean implicitPreserveUnknownFields) {
@@ -87,8 +92,8 @@ public class ResolvingContext {
   }
 
   ObjectNode toJsonSchema(Class<?> clazz) {
-    // Clear state from previous generation
-    fieldScopes.clear();
+    // Do NOT clear fieldScopes; secondary toJsonSchema() calls (for SchemaSwap/SchemaFrom)
+    // must not lose field scopes captured from the primary generation.
 
     SchemaGeneratorConfigBuilder configBuilder = new SchemaGeneratorConfigBuilder(
         objectMapper,
@@ -96,9 +101,12 @@ public class ResolvingContext {
         OptionPreset.PLAIN_JSON);
 
     // Jackson module to respect Jackson annotations on model classes
-    configBuilder.with(new JacksonModule(JacksonOption.FLATTENED_ENUMS_FROM_JSONPROPERTY));
+    JacksonModule jacksonModule = new JacksonModule(
+        JacksonOption.FLATTENED_ENUMS_FROM_JSONPROPERTY,
+        JacksonOption.RESPECT_JSONPROPERTY_ORDER);
+    configBuilder.with(jacksonModule);
 
-    // Enable options
+    // Enable additional options
     configBuilder.with(
         Option.MAP_VALUES_AS_ADDITIONAL_PROPERTIES,
         Option.FLATTENED_ENUMS);
@@ -127,6 +135,20 @@ public class ResolvingContext {
             CustomDefinition.DefinitionType.INLINE,
             CustomDefinition.AttributeInclusion.NO);
       }
+      // JsonNode and subclasses (except ObjectNode) produce "any type" schemas
+      if (JsonNode.class.isAssignableFrom(raw)) {
+        ObjectNode schema = context.getGeneratorConfig().createObjectNode();
+        return new CustomDefinition(schema,
+            CustomDefinition.DefinitionType.INLINE,
+            CustomDefinition.AttributeInclusion.NO);
+      }
+      // AnyType uses @JsonValue and should produce an empty schema
+      if (raw == AnyType.class) {
+        ObjectNode schema = context.getGeneratorConfig().createObjectNode();
+        return new CustomDefinition(schema,
+            CustomDefinition.DefinitionType.INLINE,
+            CustomDefinition.AttributeInclusion.NO);
+      }
       if (HasMetadata.class.isAssignableFrom(raw) && raw.isInterface()) {
         ObjectNode schema = context.getGeneratorConfig().createObjectNode();
         schema.put("x-kubernetes-embedded-resource", true);
@@ -149,6 +171,9 @@ public class ResolvingContext {
     SchemaGenerator generator = new SchemaGenerator(config);
     ObjectNode schema = generator.generateSchema(clazz);
 
+    // Store the root schema for "#" self-reference resolution
+    this.rootSchema = schema;
+
     // Extract $defs for $ref resolution
     if (schema.has("$defs")) {
       ObjectNode defsNode = (ObjectNode) schema.get("$defs");
@@ -162,11 +187,28 @@ public class ResolvingContext {
     return schema;
   }
 
-  FieldScope getFieldScope(String declaringClassName, String propertyName) {
-    return fieldScopes.get(declaringClassName + ":" + propertyName);
+  /**
+   * Finds a FieldScope by walking up the class hierarchy from the given class.
+   * Field scopes are stored using the declaring class name as key prefix, so inherited
+   * properties need hierarchy traversal.
+   */
+  FieldScope getFieldScope(Class<?> clazz, String propertyName) {
+    Class<?> current = clazz;
+    while (current != null && current != Object.class) {
+      FieldScope fs = fieldScopes.get(current.getName() + ":" + propertyName);
+      if (fs != null) {
+        return fs;
+      }
+      current = current.getSuperclass();
+    }
+    return null;
   }
 
   Map<String, ObjectNode> getDefs() {
     return defs;
+  }
+
+  ObjectNode getRootSchema() {
+    return rootSchema;
   }
 }

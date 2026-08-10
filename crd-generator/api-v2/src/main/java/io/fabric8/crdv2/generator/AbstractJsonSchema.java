@@ -17,6 +17,7 @@ package io.fabric8.crdv2.generator;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.github.victools.jsonschema.generator.FieldScope;
 import io.fabric8.crd.generator.annotation.AdditionalPrinterColumn;
@@ -55,6 +56,7 @@ import tools.jackson.databind.JavaType;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.SerializationConfig;
 import tools.jackson.databind.introspect.AnnotatedClass;
+import tools.jackson.databind.introspect.BeanPropertyDefinition;
 import tools.jackson.databind.introspect.ClassIntrospector;
 import tools.jackson.databind.node.JsonNodeFactory;
 import tools.jackson.databind.node.ObjectNode;
@@ -156,14 +158,45 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
     consumeRepeatingAnnotation(definition, AdditionalSelectableField.class,
         additionalSelectableFields::add);
 
-    String type = schema.path("type").asString("");
-    if ("object".equals(type) && schema.has("properties")) {
+    // Resolve top-level $ref (victools may emit $ref at the root for some types)
+    JsonNode resolved = resolveRef(schema);
+    if (resolved != schema && resolved instanceof ObjectNode) {
+      schema = (ObjectNode) resolved;
+    }
+
+    String type = resolveSchemaType(schema);
+    if ("object".equals(type)) {
       return resolveObject(new LinkedHashMap<>(), schemaSwaps, schema, definition,
           "kind", "apiVersion", "metadata");
     }
     JavaType javaType = resolvingContext.objectMapper.serializationConfig()
         .constructType(definition);
     return resolveProperty(new LinkedHashMap<>(), schemaSwaps, null, javaType, schema, null);
+  }
+
+  /**
+   * Resolves the schema type from a schema node, handling both scalar type values
+   * and array type values (e.g. ["string", "null"] for Optional types).
+   */
+  private static String resolveSchemaType(ObjectNode schemaNode) {
+    JsonNode typeNode = schemaNode.get("type");
+    if (typeNode == null) {
+      return "";
+    }
+    if (typeNode.isTextual()) {
+      return typeNode.asString();
+    }
+    if (typeNode.isArray()) {
+      // Multi-type (e.g., ["string", "null"]) - return the first non-null type
+      for (JsonNode t : typeNode) {
+        String tv = t.asString();
+        if (!"null".equals(tv)) {
+          return tv;
+        }
+      }
+      return "null";
+    }
+    return "";
   }
 
   /**
@@ -236,7 +269,7 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
       preserveUnknownFields = fieldScope.getAnnotationConsideringFieldAndGetter(
           PreserveUnknownFields.class) != null;
 
-      String schemaType = schemaNode.path("type").asString("");
+      String schemaType = resolveSchemaType(schemaNode);
       this.format = schemaNode.path("format").asString(null);
 
       if ("string".equals(schemaType)) {
@@ -280,19 +313,38 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
     }
 
     JsonNode toDefault(FieldScope fieldScope) {
+      // @Default annotation takes precedence
       Optional<String> defaultAnnotationValue = ofNullable(
           fieldScope.getAnnotationConsideringFieldAndGetter(Default.class)).map(Default::value);
-      String value = defaultAnnotationValue.orElse(null);
+
+      // Fall back to @JsonProperty(defaultValue = "...")
+      Optional<String> jsonPropertyDefault = ofNullable(
+          fieldScope.getAnnotationConsideringFieldAndGetter(JsonProperty.class))
+              .map(JsonProperty::defaultValue)
+              .filter(v -> !v.isEmpty());
+
+      boolean fromDefaultAnnotation = defaultAnnotationValue.isPresent();
+      String value = defaultAnnotationValue.or(() -> jsonPropertyDefault).orElse(null);
 
       if (value == null) {
         return null;
       }
-      Class<?> rawType = fieldScope.getType().getErasedType();
+      // Use Java reflection for the declared field type (victools may unwrap arrays/collections)
+      Class<?> rawType = fieldScope.getRawMember().getType();
       try {
-        Object typedValue = resolvingContext.kubernetesSerialization.unmarshal(value, rawType);
-        return resolvingContext.kubernetesSerialization.convertValue(typedValue, JsonNode.class);
+        if (rawType == String.class) {
+          // Strings don't need JSON parsing - use the value directly
+          return tools.jackson.databind.node.StringNode.valueOf(value);
+        }
+        // For non-string types, parse as JSON
+        Object typedValue = resolvingContext.objectMapper.readValue(value, rawType);
+        return resolvingContext.objectMapper.convertValue(typedValue, JsonNode.class);
       } catch (Exception e) {
-        throw new IllegalArgumentException("Cannot parse default value: '" + value + "' as valid YAML or JSON.", e);
+        if (fromDefaultAnnotation) {
+          throw new IllegalArgumentException("Cannot parse default value: '" + value + "' as valid YAML or JSON.", e);
+        }
+        // For @JsonProperty(defaultValue), silently ignore invalid values
+        return null;
       }
     }
 
@@ -388,6 +440,14 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
       preserveUnknownFields = bd.findAnyGetter() != null || bd.findAnySetterAccessor() != null;
     }
 
+    // Build property type map from Jackson's BeanDescription for accurate generic types.
+    // This also serves as the authoritative filter for which properties to include.
+    Map<String, JavaType> propertyTypes = new HashMap<>();
+    for (BeanPropertyDefinition bpd : bd.findProperties()) {
+      propertyTypes.put(bpd.getName(), bpd.getPrimaryType());
+    }
+    Set<String> jacksonPropertyNames = propertyTypes.keySet();
+
     collectDependentClasses(rawClass);
 
     JsonClassDescription classDescription = findClassAnnotation(rawClass, JsonClassDescription.class);
@@ -412,10 +472,12 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
     // schema swaps clear the fieldScopes map in ResolvingContext
     Map<String, FieldScope> cachedFieldScopes = new LinkedHashMap<>();
 
-    ObjectNode properties = (ObjectNode) schemaNode.path("properties");
-    if (properties != null && !properties.isMissingNode()) {
+    // Safely extract properties node - may be missing for classes with no serializable properties
+    JsonNode propertiesNode = schemaNode.get("properties");
+    ObjectNode properties = propertiesNode instanceof ObjectNode ? (ObjectNode) propertiesNode : null;
+    if (properties != null) {
       for (var entry : nodeToMap(properties).entrySet()) {
-        FieldScope fs = resolvingContext.getFieldScope(rawClass.getName(), entry.getKey());
+        FieldScope fs = resolvingContext.getFieldScope(rawClass, entry.getKey());
         if (fs != null) {
           cachedFieldScopes.put(entry.getKey(), fs);
         }
@@ -425,6 +487,10 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
         var property = it.next();
         String name = property.getKey();
         if (ignores.contains(name)) {
+          continue;
+        }
+        // Only process properties that Jackson considers serializable
+        if (!jacksonPropertyNames.contains(name)) {
           continue;
         }
         schemaSwaps = schemaSwaps.branchDepths();
@@ -442,14 +508,21 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
           continue;
         }
 
-        ObjectNode propertySchemaNode = (ObjectNode) resolveRef(property.getValue());
+        // Resolve $ref to get the actual property schema
+        JsonNode resolvedPropertyNode = resolveRef(property.getValue());
+        ObjectNode propertySchemaNode = resolvedPropertyNode instanceof ObjectNode
+            ? (ObjectNode) resolvedPropertyNode
+            : property.getValue() instanceof ObjectNode ? (ObjectNode) property.getValue()
+                : resolvingContext.objectMapper.createObjectNode();
         PropertyMetadata propertyMetadata = new PropertyMetadata(propertySchemaNode, fieldScope);
 
         if (propertyMetadata.required) {
           required.add(name);
         }
 
-        JavaType propertyType = config.constructType(fieldScope.getType().getErasedType());
+        // Use BeanDescription property types (with proper generics) over victools erased types
+        JavaType propertyType = propertyTypes.getOrDefault(name,
+            config.constructType(fieldScope.getType().getErasedType()));
         if (swapResult.classRef != null) {
           propertyMetadata.schemaFrom = swapResult.classRef;
         }
@@ -531,10 +604,18 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
 
   /**
    * Resolves a JSON $ref node by looking up the referenced definition.
+   * Handles both $defs references and "#" self-references.
    */
   private JsonNode resolveRef(JsonNode node) {
     if (node.has("$ref")) {
       String ref = node.get("$ref").asString();
+      if ("#".equals(ref)) {
+        // Self-reference to the root schema
+        ObjectNode rootSchema = resolvingContext.getRootSchema();
+        if (rootSchema != null) {
+          return rootSchema;
+        }
+      }
       ObjectNode resolved = resolvingContext.getDefs().get(ref);
       if (resolved != null) {
         return resolved;
@@ -561,16 +642,25 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
       schemaNode = (ObjectNode) resolved;
     }
 
-    String schemaType = schemaNode.path("type").asString("");
+    String schemaType = resolveSchemaType(schemaNode);
 
     if ("array".equals(schemaType)) {
       JsonNode items = schemaNode.path("items");
       if (items.isMissingNode()) {
         throw new IllegalStateException(String.format("Untyped collection %s", name));
       }
-      ObjectNode arrayItemSchema = (ObjectNode) resolveRef(items);
+      JsonNode resolvedItems = resolveRef(items);
+      ObjectNode arrayItemSchema = resolvedItems instanceof ObjectNode
+          ? (ObjectNode) resolvedItems
+          : resolvingContext.objectMapper.createObjectNode();
+      // Get the content type; if null (victools may resolve to element type), use type directly
+      JavaType contentType = type != null ? type.getContentType() : null;
+      if (contentType == null) {
+        // Fallback: construct from schema or use Object
+        contentType = type != null ? type : resolvingContext.objectMapper.serializationConfig().constructType(Object.class);
+      }
       final T schema = resolveProperty(visited, schemaSwaps, name,
-          type.getContentType(), arrayItemSchema, null);
+          contentType, arrayItemSchema, null);
       handleTypeAnnotations(schema, fieldScope, List.class, 0);
       return arrayLikeProperty(schema);
     } else if ("integer".equals(schemaType)) {
@@ -582,7 +672,7 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
     } else if ("string".equals(schemaType)) {
       JsonNode enumNode = schemaNode.path("enum");
       if (!enumNode.isMissingNode() && enumNode.isArray()) {
-        Set<String> ignores = type.isEnumType() ? findIgnoredEnumConstants(type) : Collections.emptySet();
+        Set<String> ignores = type != null && type.isEnumType() ? findIgnoredEnumConstants(type) : Collections.emptySet();
         final JsonNode[] enumValues = StreamSupport
             .stream(enumNode.spliterator(), false)
             .map(JsonNode::asString)
@@ -599,43 +689,68 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
       return intOrString();
     } else if (schemaNode.has("x-kubernetes-embedded-resource")) {
       return raw();
-    } else if (schemaType.isEmpty() && !schemaNode.has("properties")) {
-      // "any" schema — no type, no properties
-      if (type.getRawClass() == IntOrString.class || type.getRawClass() == Quantity.class) {
-        return intOrString();
-      }
-      if (type.getRawClass() == RawExtension.class) {
-        return raw();
-      }
-      String typeName = null;
-      if (type.getRawClass() == ObjectNode.class) {
-        typeName = "object";
-      }
-      T schema = singleProperty(typeName);
-      schema.setXKubernetesPreserveUnknownFields(true);
-      return schema;
-    } else if (type.isMapLikeType()) {
+    } else if (type != null && schemaNode.has("additionalProperties") && type.isMapLikeType()) {
+      // Map-like type: detect by schema structure (additionalProperties) AND Java type
       final JavaType keyType = type.getKeyType();
       final JavaType valueType = type.getContentType();
 
-      if (keyType.getRawClass() != String.class) {
+      if (keyType != null && keyType.getRawClass() != String.class) {
         logger.warn("Property '{}' with '{}' key type is mapped to 'string' because of CRD schemas limitations", name,
             keyType);
       }
 
-      ObjectNode additionalProps = (ObjectNode) resolveRef(schemaNode.path("additionalProperties"));
-      T component = resolveProperty(visited, schemaSwaps, name, valueType, additionalProps, null);
+      JsonNode additionalPropsNode = resolveRef(schemaNode.path("additionalProperties"));
+      ObjectNode additionalProps = additionalPropsNode instanceof ObjectNode
+          ? (ObjectNode) additionalPropsNode
+          : resolvingContext.objectMapper.createObjectNode();
+      JavaType resolvedValueType = valueType != null ? valueType
+          : resolvingContext.objectMapper.serializationConfig().constructType(Object.class);
+      T component = resolveProperty(visited, schemaSwaps, name, resolvedValueType, additionalProps, null);
       handleTypeAnnotations(component, fieldScope, Map.class, 1);
       return mapLikeProperty(component);
+    } else if (schemaType.isEmpty() && !schemaNode.has("properties") && !schemaNode.has("additionalProperties")) {
+      // "any" schema -- no type, no properties, no additionalProperties
+      if (type != null) {
+        if (type.getRawClass() == IntOrString.class || type.getRawClass() == Quantity.class) {
+          return intOrString();
+        }
+        if (type.getRawClass() == RawExtension.class) {
+          return raw();
+        }
+        String typeName = null;
+        if (type.getRawClass() == ObjectNode.class) {
+          typeName = "object";
+        }
+        T schema = singleProperty(typeName);
+        schema.setXKubernetesPreserveUnknownFields(true);
+        return schema;
+      }
+      T schema = singleProperty(null);
+      schema.setXKubernetesPreserveUnknownFields(true);
+      return schema;
     }
 
-    // Object type — recurse
+    // Object type -- recurse
+    if (type == null) {
+      // No type info available, treat as generic object
+      T schema = singleProperty("object");
+      schema.setXKubernetesPreserveUnknownFields(true);
+      return schema;
+    }
+
     Class<?> def = type.getRawClass();
 
     // KubernetesResource is too broad, but we can check for several common subclasses
     if (def == GenericKubernetesResource.class
         || (def.isInterface() && HasMetadata.class.isAssignableFrom(def))) {
       return raw();
+    }
+
+    // Unknown interfaces (not Kubernetes-related) produce "any type" schemas
+    if (def.isInterface()) {
+      T schema = singleProperty(null);
+      schema.setXKubernetesPreserveUnknownFields(true);
+      return schema;
     }
 
     // Free-form JSON object produced by victools custom definition
@@ -658,7 +773,12 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
   }
 
   private void handleTypeAnnotations(final T schema, FieldScope fieldScope, Class<?> containerType, int typeIndex) {
-    if (fieldScope == null || !containerType.equals(fieldScope.getType().getErasedType())) {
+    if (fieldScope == null) {
+      return;
+    }
+    Class<?> erasedType = fieldScope.getType().getErasedType();
+    // Check both the exact container type and whether it's assignable (for subclass collections)
+    if (!containerType.equals(erasedType) && !containerType.isAssignableFrom(erasedType)) {
       return;
     }
 
