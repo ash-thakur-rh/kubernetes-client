@@ -688,11 +688,23 @@
         <type>pom</type>
       </dependency>
 
-      <!-- jackson-module-jsonSchema is removed in Jackson 3, pin version for crd-generator (Phase 2 migration) -->
+      <!-- jackson-module-jsonSchema: kept for crd-generator/api (v1, deprecated). Will be replaced in later migration. -->
       <dependency>
         <groupId>com.fasterxml.jackson.module</groupId>
         <artifactId>jackson-module-jsonSchema</artifactId>
         <version>2.21.5</version>
+      </dependency>
+
+      <!-- victools jsonschema-generator replaces jackson-module-jsonSchema (removed in Jackson 3) for api-v2 -->
+      <dependency>
+        <groupId>com.github.victools</groupId>
+        <artifactId>jsonschema-generator</artifactId>
+        <version>5.0.0</version>
+      </dependency>
+      <dependency>
+        <groupId>com.github.victools</groupId>
+        <artifactId>jsonschema-module-jackson</artifactId>
+        <version>5.0.0</version>
       </dependency>
 
       <dependency>
