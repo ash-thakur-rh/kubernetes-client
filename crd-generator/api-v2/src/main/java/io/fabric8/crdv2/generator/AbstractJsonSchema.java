@@ -62,9 +62,11 @@ import tools.jackson.databind.node.JsonNodeFactory;
 import tools.jackson.databind.node.ObjectNode;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.AnnotatedParameterizedType;
 import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -79,6 +81,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -224,15 +227,48 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
     return null;
   }
 
-  void collectValidationRules(FieldScope fieldScope, List<V> validationRules) {
+  void collectValidationRules(FieldScope fieldScope, Class<?> ownerClass, List<V> validationRules) {
     if (fieldScope == null) {
       return;
     }
-    // FieldScope.getAnnotationConsideringFieldAndGetter already checks both field and getter
-    ofNullable(fieldScope.getAnnotationConsideringFieldAndGetter(ValidationRule.class)).map(this::from)
-        .ifPresent(validationRules::add);
-    ofNullable(fieldScope.getAnnotationConsideringFieldAndGetter(ValidationRules.class))
-        .ifPresent(ann -> Stream.of(ann.value()).map(this::from).forEach(validationRules::add));
+    // Collect from the field itself
+    Field rawField = fieldScope.getRawMember();
+    collectValidationAnnotations(rawField, validationRules);
+
+    // Also collect from the getter method (if present and different from field annotations).
+    // getAnnotationConsideringFieldAndGetter returns one or the other, but when both field
+    // and getter carry @ValidationRule, both sets must be included.
+    // Use ownerClass (the most specific class being processed) to find getters that may
+    // override the field's declaring class getter (e.g., K8sValidation.getSpec() overrides
+    // CustomResource.getSpec() with additional validation rules).
+    String fieldName = rawField.getName();
+    String getterName = "get" + Character.toUpperCase(fieldName.charAt(0)) + fieldName.substring(1);
+    Class<?> lookupClass = ownerClass != null ? ownerClass : rawField.getDeclaringClass();
+    try {
+      Method getter = lookupClass.getMethod(getterName);
+      collectValidationAnnotations(getter, validationRules);
+    } catch (NoSuchMethodException e) {
+      // Try boolean getter pattern
+      if (rawField.getType() == boolean.class || rawField.getType() == Boolean.class) {
+        String isGetterName = "is" + Character.toUpperCase(fieldName.charAt(0)) + fieldName.substring(1);
+        try {
+          Method getter = lookupClass.getMethod(isGetterName);
+          collectValidationAnnotations(getter, validationRules);
+        } catch (NoSuchMethodException e2) {
+          // No getter found, nothing to do
+        }
+      }
+    }
+  }
+
+  private void collectValidationAnnotations(AnnotatedElement element, List<V> validationRules) {
+    ValidationRules container = element.getAnnotation(ValidationRules.class);
+    if (container != null) {
+      Stream.of(container.value()).map(this::from).forEach(validationRules::add);
+    } else {
+      ofNullable(element.getAnnotation(ValidationRule.class)).map(this::from)
+          .ifPresent(validationRules::add);
+    }
   }
 
   class PropertyMetadata {
@@ -257,7 +293,7 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
     private boolean preserveUnknownFields;
     private Class<?> schemaFrom;
 
-    public PropertyMetadata(ObjectNode schemaNode, FieldScope fieldScope) {
+    public PropertyMetadata(ObjectNode schemaNode, FieldScope fieldScope, Class<?> ownerClass) {
       required = fieldScope.getAnnotationConsideringFieldAndGetter(Required.class) != null;
 
       description = ofNullable(fieldScope.getAnnotationConsideringFieldAndGetter(JsonPropertyDescription.class))
@@ -302,7 +338,7 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
         maxProperties = findMaxInSizeAnnotation(fieldScope).orElse(null);
       }
 
-      collectValidationRules(fieldScope, validationRules);
+      collectValidationRules(fieldScope, ownerClass, validationRules);
 
       // TODO: should probably move to a standard annotations
       nullable = fieldScope.getAnnotationConsideringFieldAndGetter(Nullable.class) != null;
@@ -514,7 +550,7 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
             ? (ObjectNode) resolvedPropertyNode
             : property.getValue() instanceof ObjectNode ? (ObjectNode) property.getValue()
                 : resolvingContext.objectMapper.createObjectNode();
-        PropertyMetadata propertyMetadata = new PropertyMetadata(propertySchemaNode, fieldScope);
+        PropertyMetadata propertyMetadata = new PropertyMetadata(propertySchemaNode, fieldScope, rawClass);
 
         if (propertyMetadata.required) {
           required.add(name);
@@ -531,7 +567,8 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
             // fully omit - this is a little inconsistent with the NullSchema handling
             continue;
           }
-          propertySchemaNode = resolvingContext.toJsonSchema(propertyMetadata.schemaFrom);
+          // Use toJsonSchemaForSwap to preserve the primary schema's $defs and rootSchema
+          propertySchemaNode = resolvingContext.toJsonSchemaForSwap(propertyMetadata.schemaFrom);
           propertyType = config.constructType(propertyMetadata.schemaFrom);
         }
 
@@ -671,13 +708,21 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
       return singleProperty("boolean");
     } else if ("string".equals(schemaType)) {
       JsonNode enumNode = schemaNode.path("enum");
-      if (!enumNode.isMissingNode() && enumNode.isArray()) {
-        Set<String> ignores = type != null && type.isEnumType() ? findIgnoredEnumConstants(type) : Collections.emptySet();
+      if (type != null && type.isEnumType()) {
+        // Build enum values from the Java enum using Jackson serialization.
+        // This correctly handles @JsonProperty renaming and @JsonIgnore filtering,
+        // which victools' FLATTENED_ENUMS may not do accurately.
+        // Also handles cases where victools doesn't generate enum values at all
+        // (e.g., for package-private inner enums).
+        final JsonNode[] enumValues = buildEnumValuesFromJavaType(type);
+        if (enumValues.length > 0) {
+          return enumProperty(enumValues);
+        }
+      } else if (!enumNode.isMissingNode() && enumNode.isArray()) {
         final JsonNode[] enumValues = StreamSupport
             .stream(enumNode.spliterator(), false)
             .map(JsonNode::asString)
             .sorted()
-            .filter(s -> !ignores.contains(s))
             .map(JsonNodeFactory.instance::stringNode)
             .toArray(JsonNode[]::new);
         return enumProperty(enumValues);
@@ -689,8 +734,10 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
       return intOrString();
     } else if (schemaNode.has("x-kubernetes-embedded-resource")) {
       return raw();
-    } else if (type != null && schemaNode.has("additionalProperties") && type.isMapLikeType()) {
-      // Map-like type: detect by schema structure (additionalProperties) AND Java type
+    } else if (type != null && type.isMapLikeType()
+        && (schemaNode.has("additionalProperties") || "object".equals(schemaType) || schemaType.isEmpty())) {
+      // Map-like type: detect by Java type. victools may emit additionalProperties, or just
+      // {"type":"object"} for maps with Object/raw values, or even an empty schema for some cases.
       final JavaType keyType = type.getKeyType();
       final JavaType valueType = type.getContentType();
 
@@ -717,8 +764,24 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
         if (type.getRawClass() == RawExtension.class) {
           return raw();
         }
+        // Map-like type with empty schema (e.g., Map<String, Object>):
+        // victools may not generate additionalProperties for maps with Object values
+        if (type.isMapLikeType()) {
+          final JavaType keyType = type.getKeyType();
+          final JavaType valueType = type.getContentType();
+          if (keyType != null && keyType.getRawClass() != String.class) {
+            logger.warn("Property '{}' with '{}' key type is mapped to 'string' because of CRD schemas limitations", name,
+                keyType);
+          }
+          ObjectNode emptySchema = resolvingContext.objectMapper.createObjectNode();
+          JavaType resolvedValueType = valueType != null ? valueType
+              : resolvingContext.objectMapper.serializationConfig().constructType(Object.class);
+          T component = resolveProperty(visited, schemaSwaps, name, resolvedValueType, emptySchema, null);
+          handleTypeAnnotations(component, fieldScope, Map.class, 1);
+          return mapLikeProperty(component);
+        }
         String typeName = null;
-        if (type.getRawClass() == ObjectNode.class) {
+        if (type.getRawClass() == ObjectNode.class || type.getRawClass() == Object.class) {
           typeName = "object";
         }
         T schema = singleProperty(typeName);
@@ -790,6 +853,7 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
         .filter(AnnotatedParameterizedType.class::isInstance)
         .map(AnnotatedParameterizedType.class::cast)
         .map(AnnotatedParameterizedType::getAnnotatedActualTypeArguments)
+        .filter(a -> typeIndex < a.length) // Guard against subtype wrappers with fewer type params
         .map(a -> a[typeIndex])
         .forEach(at -> {
           if ("string".equals(schema.getType())) {
@@ -824,24 +888,45 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
   }
 
   /**
-   * we've added support for ignoring enum values, which complicates this processing
-   * as that is something not supported directly by jackson
+   * Builds sorted enum values from a Java enum type using Jackson serialization.
+   * This correctly handles @JsonProperty renaming and @JsonIgnore filtering.
    */
-  private Set<String> findIgnoredEnumConstants(JavaType type) {
-    Field[] fields = type.getRawClass().getFields();
-    Set<String> toIgnore = new HashSet<>();
-    for (Field field : fields) {
-      if (field.isEnumConstant() && field.getAnnotation(JsonIgnore.class) != null) {
-        // hack to figure out the enum constant - this guards against some using both JsonIgnore and JsonProperty
-        try {
-          Object value = field.get(null);
-          toIgnore.add(resolvingContext.objectMapper.convertValue(value, String.class));
-        } catch (IllegalArgumentException | IllegalAccessException e) {
-          // ignored
+  /**
+   * Builds sorted enum values from a Java enum type.
+   * Uses getEnumConstants() instead of field.get() to avoid access issues with
+   * package-private enum classes. Handles @JsonProperty renaming and @JsonIgnore filtering.
+   */
+  private JsonNode[] buildEnumValuesFromJavaType(JavaType type) {
+    Class<?> enumClass = type.getRawClass();
+    Object[] constants = enumClass.getEnumConstants();
+    if (constants == null) {
+      return new JsonNode[0];
+    }
+
+    Set<String> values = new TreeSet<>();
+    for (Object constant : constants) {
+      Enum<?> enumConstant = (Enum<?>) constant;
+      String constantName = enumConstant.name();
+      try {
+        Field field = enumClass.getField(constantName);
+        if (field.getAnnotation(JsonIgnore.class) != null) {
+          continue;
         }
+        // Check for @JsonProperty to get the serialized name
+        JsonProperty jsonProp = field.getAnnotation(JsonProperty.class);
+        if (jsonProp != null && !jsonProp.value().isEmpty()) {
+          values.add(jsonProp.value());
+        } else {
+          values.add(constantName);
+        }
+      } catch (NoSuchFieldException e) {
+        values.add(constantName);
       }
     }
-    return toIgnore;
+
+    return values.stream()
+        .map(JsonNodeFactory.instance::stringNode)
+        .toArray(JsonNode[]::new);
   }
 
   V from(ValidationRule validationRule) {

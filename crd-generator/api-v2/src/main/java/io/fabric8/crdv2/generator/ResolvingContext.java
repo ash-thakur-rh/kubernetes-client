@@ -159,12 +159,21 @@ public class ResolvingContext {
       return null;
     });
 
-    // Capture FieldScope per property for annotation access in AbstractJsonSchema
+    // Capture FieldScope per property for annotation access in AbstractJsonSchema.
+    // For array/map fields, victools calls this override multiple times (once for the
+    // container, once for items/values). We always prefer the FieldScope whose resolved
+    // type matches the raw field's declared type, so that handleTypeAnnotations can
+    // correctly detect container types (List, Map).
     configBuilder.forFields()
         .withInstanceAttributeOverride((propSchema, field, context) -> {
           String key = field.getDeclaringType().getErasedType().getName()
               + ":" + field.getSchemaPropertyName();
-          fieldScopes.put(key, field);
+          Class<?> rawFieldType = field.getRawMember().getType();
+          Class<?> scopeType = field.getType().getErasedType();
+          FieldScope existing = fieldScopes.get(key);
+          if (existing == null || rawFieldType.isAssignableFrom(scopeType)) {
+            fieldScopes.put(key, field);
+          }
         });
 
     SchemaGeneratorConfig config = configBuilder.build();
@@ -184,6 +193,20 @@ public class ResolvingContext {
       this.defs = Collections.emptyMap();
     }
 
+    return schema;
+  }
+
+  /**
+   * Generates a JSON schema for a secondary type (SchemaSwap/SchemaFrom target),
+   * preserving the defs and rootSchema from the primary schema generation.
+   * Without this, the primary $defs are lost when a secondary schema is generated.
+   */
+  ObjectNode toJsonSchemaForSwap(Class<?> clazz) {
+    Map<String, ObjectNode> savedDefs = this.defs;
+    ObjectNode savedRoot = this.rootSchema;
+    ObjectNode schema = toJsonSchema(clazz);
+    this.defs = savedDefs;
+    this.rootSchema = savedRoot;
     return schema;
   }
 
