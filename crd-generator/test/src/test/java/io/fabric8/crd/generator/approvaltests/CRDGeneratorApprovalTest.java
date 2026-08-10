@@ -15,8 +15,6 @@
  */
 package io.fabric8.crd.generator.approvaltests;
 
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import com.spun.util.tests.TestUtils;
 import io.fabric8.crd.generator.CRDGenerator;
 import io.fabric8.crd.generator.CRDInfo;
@@ -38,7 +36,6 @@ import io.sundr.utils.Strings;
 import org.approvaltests.Approvals;
 import org.approvaltests.namer.StackTraceNamer;
 import org.approvaltests.writers.FileApprovalWriter;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.io.CleanupMode;
@@ -60,20 +57,9 @@ class CRDGeneratorApprovalTest {
   @TempDir(cleanup = CleanupMode.ON_SUCCESS)
   File tempDir;
 
-  private boolean minimizeQuotes;
-
   @BeforeEach
   void setUp() {
     Approvals.settings().allowMultipleVerifyCallsForThisClass();
-    minimizeQuotes = ((YAMLFactory) CRDGenerator.YAML_MAPPER.getFactory()).isEnabled(YAMLGenerator.Feature.MINIMIZE_QUOTES);
-    ((YAMLFactory) CRDGenerator.YAML_MAPPER.getFactory()).disable(YAMLGenerator.Feature.MINIMIZE_QUOTES);
-  }
-
-  @AfterEach
-  void tearDown() {
-    if (minimizeQuotes) {
-      ((YAMLFactory) CRDGenerator.YAML_MAPPER.getFactory()).enable(YAMLGenerator.Feature.MINIMIZE_QUOTES);
-    }
   }
 
   @ParameterizedTest(name = "{1}.{2} parallel={3}")
