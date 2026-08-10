@@ -138,6 +138,7 @@ public class ResolvingContext {
       // JsonNode and subclasses (except ObjectNode) produce "any type" schemas
       if (JsonNode.class.isAssignableFrom(raw)) {
         ObjectNode schema = context.getGeneratorConfig().createObjectNode();
+        schema.put("x-kubernetes-preserve-unknown-fields", true);
         return new CustomDefinition(schema,
             CustomDefinition.DefinitionType.INLINE,
             CustomDefinition.AttributeInclusion.NO);

@@ -95,6 +95,7 @@ class CRDGeneratorApprovalTest {
     Approvals.settings().allowMultipleVerifyCallsForThisMethod();
     final Map<String, Map<String, io.fabric8.crdv2.generator.CRDInfo>> result = new io.fabric8.crdv2.generator.CRDGenerator()
         .withParallelGenerationEnabled(parallel)
+        .withMinQuotes(true)
         .inOutputDir(tempDir)
         .customResourceClasses(crClasses)
         .forCRDVersions(version)

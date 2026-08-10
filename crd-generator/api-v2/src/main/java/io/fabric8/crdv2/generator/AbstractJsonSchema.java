@@ -476,13 +476,10 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
       preserveUnknownFields = bd.findAnyGetter() != null || bd.findAnySetterAccessor() != null;
     }
 
-    // Build property type map from Jackson's BeanDescription for accurate generic types.
-    // This also serves as the authoritative filter for which properties to include.
     Map<String, JavaType> propertyTypes = new HashMap<>();
     for (BeanPropertyDefinition bpd : bd.findProperties()) {
       propertyTypes.put(bpd.getName(), bpd.getPrimaryType());
     }
-    Set<String> jacksonPropertyNames = propertyTypes.keySet();
 
     collectDependentClasses(rawClass);
 
@@ -523,10 +520,6 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
         var property = it.next();
         String name = property.getKey();
         if (ignores.contains(name)) {
-          continue;
-        }
-        // Only process properties that Jackson considers serializable
-        if (!jacksonPropertyNames.contains(name)) {
           continue;
         }
         schemaSwaps = schemaSwaps.branchDepths();
@@ -780,17 +773,18 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
           handleTypeAnnotations(component, fieldScope, Map.class, 1);
           return mapLikeProperty(component);
         }
+        if (JsonNode.class.isAssignableFrom(type.getRawClass())) {
+          T schema = singleProperty(null);
+          schema.setXKubernetesPreserveUnknownFields(true);
+          return schema;
+        }
         String typeName = null;
         if (type.getRawClass() == ObjectNode.class || type.getRawClass() == Object.class) {
           typeName = "object";
         }
-        T schema = singleProperty(typeName);
-        schema.setXKubernetesPreserveUnknownFields(true);
-        return schema;
+        return singleProperty(typeName);
       }
-      T schema = singleProperty(null);
-      schema.setXKubernetesPreserveUnknownFields(true);
-      return schema;
+      return singleProperty(null);
     }
 
     // Object type -- recurse
