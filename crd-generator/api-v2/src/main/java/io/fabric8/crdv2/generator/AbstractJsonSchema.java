@@ -186,7 +186,7 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
     if (typeNode == null) {
       return "";
     }
-    if (typeNode.isTextual()) {
+    if (typeNode.isString()) {
       return typeNode.asString();
     }
     if (typeNode.isArray()) {

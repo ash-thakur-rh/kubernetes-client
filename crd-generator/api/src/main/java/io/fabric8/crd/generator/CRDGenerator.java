@@ -28,6 +28,7 @@ import tools.jackson.databind.SerializationFeature;
 import tools.jackson.dataformat.yaml.YAMLFactory;
 import tools.jackson.dataformat.yaml.YAMLMapper;
 import tools.jackson.dataformat.yaml.YAMLWriteFeature;
+import tools.jackson.dataformat.yaml.util.StringQuotingChecker;
 
 import java.io.Closeable;
 import java.io.File;
@@ -67,6 +68,29 @@ public class CRDGenerator {
           .enable(YAMLWriteFeature.MINIMIZE_QUOTES)
           .enable(YAMLWriteFeature.ALWAYS_QUOTE_NUMBERS_AS_STRINGS)
           .disable(YAMLWriteFeature.WRITE_DOC_START_MARKER)
+          .stringQuotingChecker(new StringQuotingChecker.Default() {
+            @Override
+            protected boolean valueHasQuotableChar(String inputStr) {
+              for (int i = 0, end = inputStr.length(); i < end; ++i) {
+                switch (inputStr.charAt(i)) {
+                  case ',':
+                    return true;
+                  case '#':
+                    if (precededOnlyByBlank(inputStr, i)) {
+                      return true;
+                    }
+                    break;
+                  case ':':
+                    if (followedOnlyByBlank(inputStr, i)) {
+                      return true;
+                    }
+                    break;
+                  default:
+                }
+              }
+              return false;
+            }
+          })
           .build())
       .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
       .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)

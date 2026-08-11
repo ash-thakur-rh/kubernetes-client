@@ -70,7 +70,7 @@ spec:
               nullable: true
               type: string
             singleDigit:
-              pattern: "\\b[1-9]\\b"
+              pattern: \b[1-9]\b
               type: string
             sizedField:
               type: integer
