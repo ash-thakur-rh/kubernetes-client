@@ -782,9 +782,16 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
           schema.setXKubernetesPreserveUnknownFields(true);
           return schema;
         }
-        if (type.getRawClass() == ObjectNode.class || type.getRawClass() == Object.class) {
+        if (type.getRawClass() == ObjectNode.class) {
           T schema = singleProperty("object");
           schema.setXKubernetesPreserveUnknownFields(true);
+          return schema;
+        }
+        if (type.getRawClass() == Object.class) {
+          T schema = singleProperty("object");
+          if (fieldScope != null) {
+            schema.setXKubernetesPreserveUnknownFields(true);
+          }
           return schema;
         }
         return singleProperty(null);
