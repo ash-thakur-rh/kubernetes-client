@@ -727,6 +727,10 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
       return intOrString();
     } else if (schemaNode.has("x-kubernetes-embedded-resource")) {
       return raw();
+    } else if (schemaNode.has("x-kubernetes-preserve-unknown-fields")) {
+      T schema = singleProperty(null);
+      schema.setXKubernetesPreserveUnknownFields(true);
+      return schema;
     } else if (type != null && type.isMapLikeType()
         && (schemaNode.has("additionalProperties") || "object".equals(schemaType) || schemaType.isEmpty())) {
       // Map-like type: detect by Java type. victools may emit additionalProperties, or just
@@ -778,11 +782,12 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
           schema.setXKubernetesPreserveUnknownFields(true);
           return schema;
         }
-        String typeName = null;
         if (type.getRawClass() == ObjectNode.class || type.getRawClass() == Object.class) {
-          typeName = "object";
+          T schema = singleProperty("object");
+          schema.setXKubernetesPreserveUnknownFields(true);
+          return schema;
         }
-        return singleProperty(typeName);
+        return singleProperty(null);
       }
       return singleProperty(null);
     }

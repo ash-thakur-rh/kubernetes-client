@@ -143,9 +143,10 @@ public class ResolvingContext {
             CustomDefinition.DefinitionType.INLINE,
             CustomDefinition.AttributeInclusion.NO);
       }
-      // AnyType uses @JsonValue and should produce an empty schema
+      // AnyType represents "any" type content — mark as preserve-unknown-fields
       if (raw == AnyType.class) {
         ObjectNode schema = context.getGeneratorConfig().createObjectNode();
+        schema.put("x-kubernetes-preserve-unknown-fields", true);
         return new CustomDefinition(schema,
             CustomDefinition.DefinitionType.INLINE,
             CustomDefinition.AttributeInclusion.NO);
