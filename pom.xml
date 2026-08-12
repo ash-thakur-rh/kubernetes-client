@@ -91,6 +91,8 @@
     <sundrio.version>0.230.2</sundrio.version>
     <okhttp.version>5.4.0</okhttp.version>
     <jackson.version>2.21.4</jackson.version>
+    <jackson3.version>3.2.1</jackson3.version>
+    <victools.version>5.0.0</victools.version>
     <jackson.bundle.version>${jackson.version}</jackson.bundle.version>
     <!-- fix as jackson-annotations version 2.20 was released, Refer: https://github.com/FasterXML/jackson-bom/blob/54f854ba1ce69c5827f8acf6d08ba2d7ce36233c/pom.xml#L53-L62 -->
     <jackson.bundle.version.annotations>2.21</jackson.bundle.version.annotations>
@@ -265,11 +267,6 @@
       <dependency>
         <groupId>io.fabric8</groupId>
         <artifactId>crd-generator-apt</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>io.fabric8</groupId>
-        <artifactId>crd-generator-api</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
@@ -678,13 +675,32 @@
         <scope>import</scope>
       </dependency>
 
-      <!-- Jackson dependencies, imported as a BOM -->
+      <!-- Jackson 2 dependencies, imported as a BOM -->
       <dependency>
         <groupId>com.fasterxml.jackson</groupId>
         <artifactId>jackson-bom</artifactId>
         <version>${jackson.version}</version>
         <scope>import</scope>
         <type>pom</type>
+      </dependency>
+
+      <!-- victools jsonschema-generator (used by crd-generator) -->
+      <dependency>
+        <groupId>com.github.victools</groupId>
+        <artifactId>jsonschema-generator</artifactId>
+        <version>${victools.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.github.victools</groupId>
+        <artifactId>jsonschema-module-jackson</artifactId>
+        <version>${victools.version}</version>
+      </dependency>
+
+      <!-- Jackson 3 dependencies (used by crd-generator modules) -->
+      <dependency>
+        <groupId>tools.jackson.core</groupId>
+        <artifactId>jackson-databind</artifactId>
+        <version>${jackson3.version}</version>
       </dependency>
 
       <dependency>

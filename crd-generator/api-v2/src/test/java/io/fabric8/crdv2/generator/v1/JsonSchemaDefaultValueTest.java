@@ -16,17 +16,16 @@
 package io.fabric8.crdv2.generator.v1;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.BooleanNode;
-import com.fasterxml.jackson.databind.node.DoubleNode;
-import com.fasterxml.jackson.databind.node.FloatNode;
-import com.fasterxml.jackson.databind.node.IntNode;
-import com.fasterxml.jackson.databind.node.LongNode;
 import io.fabric8.generator.annotation.Default;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.BooleanNode;
+import com.fasterxml.jackson.databind.node.DoubleNode;
+import com.fasterxml.jackson.databind.node.IntNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -156,7 +155,7 @@ class JsonSchemaDefaultValueTest {
     assertThat(JsonSchema.from(ClassInTest.class).getProperties())
         .extracting("defaultValueForLong._default")
         .asInstanceOf(InstanceOfAssertFactories.type(JsonNode.class))
-        .isInstanceOf(LongNode.class)
+        .isInstanceOf(IntNode.class)
         .extracting(JsonNode::asLong)
         .isEqualTo(1337L);
   }
@@ -167,7 +166,7 @@ class JsonSchemaDefaultValueTest {
     assertThat(JsonSchema.from(ClassInTest.class).getProperties())
         .extracting("defaultValueForFloat._default")
         .asInstanceOf(InstanceOfAssertFactories.type(JsonNode.class))
-        .isInstanceOf(FloatNode.class)
+        .isInstanceOf(DoubleNode.class)
         .extracting(JsonNode::asText)
         .isEqualTo("13.37");
   }

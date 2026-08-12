@@ -16,8 +16,6 @@
 
 package io.fabric8.crdv2.generator;
 
-import com.fasterxml.jackson.databind.JsonNode;
-
 import java.util.List;
 
 public interface KubernetesJSONSchemaProps {
@@ -56,7 +54,7 @@ public interface KubernetesJSONSchemaProps {
 
   void setNullable(Boolean nullable);
 
-  void setDefault(JsonNode tree);
+  void setDefault(com.fasterxml.jackson.databind.JsonNode tree);
 
   void setDescription(String description);
 
