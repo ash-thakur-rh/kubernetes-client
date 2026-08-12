@@ -43,10 +43,6 @@
 
     <dependency>
       <groupId>io.fabric8</groupId>
-      <artifactId>crd-generator-api</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>io.fabric8</groupId>
       <artifactId>crd-generator-api-v2</artifactId>
     </dependency>
 
@@ -82,4 +78,21 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+              <version>${lombok.version}</version>
+            </path>
+          </annotationProcessorPaths>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 </project>

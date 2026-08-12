@@ -20,9 +20,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.BooleanNode;
 import com.fasterxml.jackson.databind.node.DoubleNode;
-import com.fasterxml.jackson.databind.node.FloatNode;
 import com.fasterxml.jackson.databind.node.IntNode;
-import com.fasterxml.jackson.databind.node.LongNode;
 import io.fabric8.generator.annotation.Default;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.DisplayName;
@@ -156,7 +154,7 @@ class JsonSchemaDefaultValueTest {
     assertThat(JsonSchema.from(ClassInTest.class).getProperties())
         .extracting("defaultValueForLong._default")
         .asInstanceOf(InstanceOfAssertFactories.type(JsonNode.class))
-        .isInstanceOf(LongNode.class)
+        .isInstanceOf(IntNode.class)
         .extracting(JsonNode::asLong)
         .isEqualTo(1337L);
   }
@@ -167,7 +165,7 @@ class JsonSchemaDefaultValueTest {
     assertThat(JsonSchema.from(ClassInTest.class).getProperties())
         .extracting("defaultValueForFloat._default")
         .asInstanceOf(InstanceOfAssertFactories.type(JsonNode.class))
-        .isInstanceOf(FloatNode.class)
+        .isInstanceOf(DoubleNode.class)
         .extracting(JsonNode::asText)
         .isEqualTo("13.37");
   }

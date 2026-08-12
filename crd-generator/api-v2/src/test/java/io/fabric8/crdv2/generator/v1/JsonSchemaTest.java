@@ -20,13 +20,6 @@ import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.node.TextNode;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import io.fabric8.crd.generator.annotation.PreserveUnknownFields;
 import io.fabric8.crd.generator.annotation.SchemaSwap;
 import io.fabric8.crdv2.example.annotated.Annotated;
@@ -52,8 +45,14 @@ import io.fabric8.kubernetes.api.model.apiextensions.v1.ValidationRule;
 import io.fabric8.kubernetes.api.model.coordination.v1.LeaseSpec;
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Node;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.annotation.JsonSerialize;
+import tools.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.node.StringNode;
+import tools.jackson.databind.ser.std.StdSerializer;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -82,8 +81,8 @@ class JsonSchemaTest {
     JSONSchemaProps schema = JsonSchema.from(Person.class);
     assertNotNull(schema);
     Map<String, JSONSchemaProps> properties = assertSchemaHasNumberOfProperties(schema, 7);
-    final List<String> personTypes = properties.get("type").getEnum().stream().map(JsonNode::asText)
-        .collect(Collectors.toList());
+    final List<String> personTypes = properties.get("type").getEnum().stream()
+        .map(com.fasterxml.jackson.databind.JsonNode::asText).collect(Collectors.toList());
     assertEquals(2, personTypes.size());
     assertTrue(personTypes.contains("crazy"));
     assertTrue(personTypes.contains("crazier"));
@@ -91,8 +90,7 @@ class JsonSchemaTest {
         .getSchema().getProperties();
     assertEquals(5, addressProperties.size());
     final List<String> addressTypes = addressProperties.get("type").getEnum().stream()
-        .map(JsonNode::asText)
-        .collect(Collectors.toList());
+        .map(com.fasterxml.jackson.databind.JsonNode::asText).collect(Collectors.toList());
     assertEquals(2, addressTypes.size());
     assertTrue(addressTypes.contains("home"));
     assertTrue(addressTypes.contains("work"));
@@ -141,9 +139,13 @@ class JsonSchemaTest {
     assertEquals(type.apply("integer").withMaximum(5.0).build(), spec.get("max"));
     assertEquals(type.apply("string").withPattern("\\b[1-9]\\b").build(), spec.get("singleDigit"));
     assertEquals(type.apply("string").withNullable(true).build(), spec.get("nullable"));
-    assertEquals(type.apply("string").withDefault(TextNode.valueOf("my-value")).build(), spec.get("defaultValue"));
-    assertEquals(type.apply("string").withDefault(TextNode.valueOf("my-value2")).build(), spec.get("defaultValue2"));
-    assertEquals(type.apply("string").withEnum(TextNode.valueOf("non"), TextNode.valueOf("oui")).build(), spec.get("anEnum"));
+    assertEquals(type.apply("string").withDefault(ResolvingContext.toJackson2(StringNode.valueOf("my-value"))).build(),
+        spec.get("defaultValue"));
+    assertEquals(type.apply("string").withDefault(ResolvingContext.toJackson2(StringNode.valueOf("my-value2"))).build(),
+        spec.get("defaultValue2"));
+    assertEquals(type.apply("string").withEnum(ResolvingContext.toJackson2(StringNode.valueOf("non")),
+        ResolvingContext.toJackson2(StringNode.valueOf("oui"))).build(),
+        spec.get("anEnum"));
     assertEquals(type.apply("string").withFormat("date-time").build(), spec.get("issuedAt"));
     // the shape does not influence the type in these cases
     assertEquals(type.apply("string").build(), spec.get("bool"));
@@ -425,7 +427,7 @@ class JsonSchemaTest {
     }
 
     @Override
-    public void serialize(Object value, JsonGenerator gen, SerializerProvider provider) throws IOException {
+    public void serialize(Object value, JsonGenerator gen, SerializationContext provider) {
 
     }
 
