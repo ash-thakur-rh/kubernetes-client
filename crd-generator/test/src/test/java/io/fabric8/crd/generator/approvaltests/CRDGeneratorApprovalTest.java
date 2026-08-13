@@ -69,7 +69,6 @@ class CRDGeneratorApprovalTest {
     Approvals.settings().allowMultipleVerifyCallsForThisMethod();
     final Map<String, Map<String, CRDInfo>> result = new CRDGenerator()
         .withParallelGenerationEnabled(parallel)
-        .withMinQuotes(true)
         .inOutputDir(tempDir)
         .customResourceClasses(crClasses)
         .forCRDVersions(version)

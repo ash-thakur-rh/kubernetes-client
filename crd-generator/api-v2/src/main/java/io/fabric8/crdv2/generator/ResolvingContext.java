@@ -24,8 +24,8 @@ import com.github.victools.jsonschema.generator.SchemaGenerator;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfig;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
 import com.github.victools.jsonschema.generator.SchemaVersion;
-import com.github.victools.jsonschema.module.jackson.JacksonModule;
 import com.github.victools.jsonschema.module.jackson.JacksonOption;
+import com.github.victools.jsonschema.module.jackson.JacksonSchemaModule;
 import io.fabric8.kubernetes.api.model.AnyType;
 import io.fabric8.kubernetes.api.model.GenericKubernetesResource;
 import io.fabric8.kubernetes.api.model.HasMetadata;
@@ -101,65 +101,19 @@ public class ResolvingContext {
         OptionPreset.PLAIN_JSON);
 
     // Jackson module to respect Jackson annotations on model classes
-    JacksonModule jacksonModule = new JacksonModule(
+    JacksonSchemaModule jacksonModule = new JacksonSchemaModule(
         JacksonOption.FLATTENED_ENUMS_FROM_JSONPROPERTY,
         JacksonOption.RESPECT_JSONPROPERTY_ORDER);
     configBuilder.with(jacksonModule);
 
-    // Enable additional options
     configBuilder.with(
         Option.MAP_VALUES_AS_ADDITIONAL_PROPERTIES,
         Option.FLATTENED_ENUMS);
 
-    // Custom type definitions for Kubernetes special types
-    configBuilder.with((javaType, context) -> {
-      Class<?> raw = javaType.getErasedType();
-      if (raw == IntOrString.class || raw == Quantity.class) {
-        ObjectNode schema = context.getGeneratorConfig().createObjectNode();
-        schema.put("x-kubernetes-int-or-string", true);
-        return new CustomDefinition(schema,
-            CustomDefinition.DefinitionType.INLINE,
-            CustomDefinition.AttributeInclusion.NO);
-      }
-      if (raw == RawExtension.class || raw == GenericKubernetesResource.class) {
-        ObjectNode schema = context.getGeneratorConfig().createObjectNode();
-        schema.put("x-kubernetes-embedded-resource", true);
-        return new CustomDefinition(schema,
-            CustomDefinition.DefinitionType.INLINE,
-            CustomDefinition.AttributeInclusion.NO);
-      }
-      if (raw == ObjectNode.class) {
-        ObjectNode schema = context.getGeneratorConfig().createObjectNode();
-        schema.put("type", "object");
-        return new CustomDefinition(schema,
-            CustomDefinition.DefinitionType.INLINE,
-            CustomDefinition.AttributeInclusion.NO);
-      }
-      // JsonNode and subclasses (except ObjectNode) produce "any type" schemas
-      if (JsonNode.class.isAssignableFrom(raw)) {
-        ObjectNode schema = context.getGeneratorConfig().createObjectNode();
-        schema.put("x-kubernetes-preserve-unknown-fields", true);
-        return new CustomDefinition(schema,
-            CustomDefinition.DefinitionType.INLINE,
-            CustomDefinition.AttributeInclusion.NO);
-      }
-      // AnyType represents "any" type content — mark as preserve-unknown-fields
-      if (raw == AnyType.class) {
-        ObjectNode schema = context.getGeneratorConfig().createObjectNode();
-        schema.put("x-kubernetes-preserve-unknown-fields", true);
-        return new CustomDefinition(schema,
-            CustomDefinition.DefinitionType.INLINE,
-            CustomDefinition.AttributeInclusion.NO);
-      }
-      if (HasMetadata.class.isAssignableFrom(raw) && raw.isInterface()) {
-        ObjectNode schema = context.getGeneratorConfig().createObjectNode();
-        schema.put("x-kubernetes-embedded-resource", true);
-        return new CustomDefinition(schema,
-            CustomDefinition.DefinitionType.INLINE,
-            CustomDefinition.AttributeInclusion.NO);
-      }
-      return null;
-    });
+    // Custom type definitions for Kubernetes special types that victools can't handle
+    configBuilder.forTypesInGeneral()
+        .withCustomDefinitionProvider(
+            (javaType, context) -> kubernetesTypeDefinition(javaType.getErasedType(), context.getGeneratorConfig()));
 
     // Capture FieldScope per property for annotation access in AbstractJsonSchema.
     // For array/map fields, victools calls this override multiple times (once for the
@@ -184,8 +138,61 @@ public class ResolvingContext {
 
     // Store the root schema for "#" self-reference resolution
     this.rootSchema = schema;
+    extractDefs(schema);
 
-    // Extract $defs for $ref resolution
+    return schema;
+  }
+
+  /**
+   * Maps Kubernetes-specific Java types to custom JSON Schema definitions.
+   * These types have no standard JSON Schema representation, so victools would
+   * generate incorrect schemas without this override.
+   */
+  private static CustomDefinition kubernetesTypeDefinition(Class<?> raw, SchemaGeneratorConfig generatorConfig) {
+    // IntOrString and Quantity are represented as x-kubernetes-int-or-string in CRDs
+    if (raw == IntOrString.class || raw == Quantity.class) {
+      return inlineDefinition(generatorConfig, "x-kubernetes-int-or-string", true);
+    }
+    // RawExtension and GenericKubernetesResource are embedded resources
+    if (raw == RawExtension.class || raw == GenericKubernetesResource.class) {
+      return inlineDefinition(generatorConfig, "x-kubernetes-embedded-resource", true);
+    }
+    // ObjectNode is a free-form JSON object
+    if (raw == ObjectNode.class) {
+      return inlineDefinition(generatorConfig, "type", "object");
+    }
+    // JsonNode and subclasses (except ObjectNode, handled above) represent arbitrary JSON
+    if (JsonNode.class.isAssignableFrom(raw)) {
+      return inlineDefinition(generatorConfig, "x-kubernetes-preserve-unknown-fields", true);
+    }
+    // AnyType represents "any" type content
+    if (raw == AnyType.class) {
+      return inlineDefinition(generatorConfig, "x-kubernetes-preserve-unknown-fields", true);
+    }
+    // HasMetadata interfaces are embedded Kubernetes resources
+    if (HasMetadata.class.isAssignableFrom(raw) && raw.isInterface()) {
+      return inlineDefinition(generatorConfig, "x-kubernetes-embedded-resource", true);
+    }
+    return null;
+  }
+
+  private static CustomDefinition inlineDefinition(SchemaGeneratorConfig config, String key, Object value) {
+    ObjectNode schema = config.createObjectNode();
+    if (value instanceof Boolean b) {
+      schema.put(key, b);
+    } else {
+      schema.put(key, value.toString());
+    }
+    return new CustomDefinition(schema,
+        CustomDefinition.DefinitionType.INLINE,
+        CustomDefinition.AttributeInclusion.NO);
+  }
+
+  /**
+   * Extracts $defs from the generated schema for $ref resolution.
+   * CRDs don't support $ref, so AbstractJsonSchema resolves them inline during traversal.
+   */
+  private void extractDefs(ObjectNode schema) {
     if (schema.has("$defs")) {
       ObjectNode defsNode = (ObjectNode) schema.get("$defs");
       Map<String, ObjectNode> extractedDefs = new ConcurrentHashMap<>();
@@ -194,8 +201,6 @@ public class ResolvingContext {
     } else {
       this.defs = Collections.emptyMap();
     }
-
-    return schema;
   }
 
   /**

@@ -60,6 +60,7 @@ import tools.jackson.databind.introspect.BeanPropertyDefinition;
 import tools.jackson.databind.introspect.ClassIntrospector;
 import tools.jackson.databind.node.JsonNodeFactory;
 import tools.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.node.StringNode;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
@@ -76,8 +77,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
@@ -98,6 +97,10 @@ import static java.util.Optional.ofNullable;
 public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V extends KubernetesValidationRule> {
 
   private static final Logger logger = LoggerFactory.getLogger(AbstractJsonSchema.class);
+  public static final String OBJECT_LITERAL = "object";
+  public static final String STRING_LITERAL = "string";
+  public static final String INTEGER_LITERAL = "integer";
+  public static final String NUMBER_LITERAL = "number";
 
   private final ResolvingContext resolvingContext;
   private final T root;
@@ -105,19 +108,12 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
   private final Set<AdditionalPrinterColumn> additionalPrinterColumns = new HashSet<>();
   private final Set<AdditionalSelectableField> additionalSelectableFields = new HashSet<>();
 
-  public static class AnnotationMetadata {
-    public final Annotation annotation;
-    public final KubernetesJSONSchemaProps schema;
-
-    public AnnotationMetadata(Annotation annotation, KubernetesJSONSchemaProps schema) {
-      this.annotation = annotation;
-      this.schema = schema;
-    }
+  public record AnnotationMetadata(Annotation annotation, KubernetesJSONSchemaProps schema) {
   }
 
   private final Map<Class<? extends Annotation>, LinkedHashMap<String, AnnotationMetadata>> pathMetadata = new HashMap<>();
 
-  public AbstractJsonSchema(ResolvingContext resolvingContext, Class<?> def) {
+  protected AbstractJsonSchema(ResolvingContext resolvingContext, Class<?> def) {
     this.resolvingContext = resolvingContext;
     // TODO: could make this configurable, and could stop looking for single valued ones - or warn
     Stream.of(
@@ -163,12 +159,12 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
 
     // Resolve top-level $ref (victools may emit $ref at the root for some types)
     JsonNode resolved = resolveRef(schema);
-    if (resolved != schema && resolved instanceof ObjectNode) {
-      schema = (ObjectNode) resolved;
+    if (resolved != schema && resolved instanceof ObjectNode objectNode) {
+      schema = objectNode;
     }
 
     String type = resolveSchemaType(schema);
-    if ("object".equals(type)) {
+    if (OBJECT_LITERAL.equals(type)) {
       return resolveObject(new LinkedHashMap<>(), schemaSwaps, schema, definition,
           "kind", "apiVersion", "metadata");
     }
@@ -294,58 +290,71 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
     private Class<?> schemaFrom;
 
     public PropertyMetadata(ObjectNode schemaNode, FieldScope fieldScope, Class<?> ownerClass) {
-      required = fieldScope.getAnnotationConsideringFieldAndGetter(Required.class) != null;
-
       description = ofNullable(fieldScope.getAnnotationConsideringFieldAndGetter(JsonPropertyDescription.class))
           .map(JsonPropertyDescription::value)
           .orElse(null);
-
       schemaFrom = ofNullable(fieldScope.getAnnotationConsideringFieldAndGetter(SchemaFrom.class))
           .map(SchemaFrom::type).orElse(null);
       preserveUnknownFields = fieldScope.getAnnotationConsideringFieldAndGetter(
           PreserveUnknownFields.class) != null;
 
-      String schemaType = resolveSchemaType(schemaNode);
       this.format = schemaNode.path("format").asString(null);
-
-      if ("string".equals(schemaType)) {
-        pattern = ofNullable(fieldScope.getAnnotationConsideringFieldAndGetter(Pattern.class))
-            .map(Pattern::value)
-            .or(() -> ofNullable(schemaNode.path("pattern").asString(null)))
-            .orElse(null);
-        minLength = findMinInSizeAnnotation(fieldScope)
-            .or(() -> ofNullable(schemaNode.has("minLength") ? (long) schemaNode.get("minLength").intValue() : null))
-            .orElse(null);
-        maxLength = findMaxInSizeAnnotation(fieldScope)
-            .or(() -> ofNullable(schemaNode.has("maxLength") ? (long) schemaNode.get("maxLength").intValue() : null))
-            .orElse(null);
-      } else if ("integer".equals(schemaType) || "number".equals(schemaType)) {
-        Double minimum = schemaNode.has("minimum") ? schemaNode.get("minimum").doubleValue() : null;
-        Boolean exclMin = schemaNode.has("exclusiveMinimum") ? schemaNode.get("exclusiveMinimum").booleanValue() : null;
-        Double maximum = schemaNode.has("maximum") ? schemaNode.get("maximum").doubleValue() : null;
-        Boolean exclMax = schemaNode.has("exclusiveMaximum") ? schemaNode.get("exclusiveMaximum").booleanValue() : null;
-        setMinMax(fieldScope, minimum, exclMin, maximum, exclMax);
-      } else if ("array".equals(schemaType)) {
-        minItems = findMinInSizeAnnotation(fieldScope)
-            .or(() -> ofNullable(schemaNode.has("minItems") ? (long) schemaNode.get("minItems").intValue() : null))
-            .orElse(null);
-        maxItems = findMaxInSizeAnnotation(fieldScope)
-            .or(() -> ofNullable(schemaNode.has("maxItems") ? (long) schemaNode.get("maxItems").intValue() : null))
-            .orElse(null);
-      } else if ("object".equals(schemaType)) {
-        // TODO: Could be also applied only on Maps instead of "all the rest"
-        minProperties = findMinInSizeAnnotation(fieldScope).orElse(null);
-        maxProperties = findMaxInSizeAnnotation(fieldScope).orElse(null);
-      }
-
+      extractTypeConstraints(schemaNode, fieldScope);
       collectValidationRules(fieldScope, ownerClass, validationRules);
 
-      // TODO: should probably move to a standard annotations
+      // TODO: should probably move to a standard annotation
       nullable = fieldScope.getAnnotationConsideringFieldAndGetter(Nullable.class) != null;
-
       // TODO: should the following be deprecated?
       required = fieldScope.getAnnotationConsideringFieldAndGetter(Required.class) != null;
       defaultValue = toDefault(fieldScope);
+    }
+
+    private void extractTypeConstraints(ObjectNode schemaNode, FieldScope fieldScope) {
+      String schemaType = resolveSchemaType(schemaNode);
+      switch (schemaType) {
+        case STRING_LITERAL -> extractStringConstraints(schemaNode, fieldScope);
+        case INTEGER_LITERAL, NUMBER_LITERAL -> extractNumericConstraints(schemaNode, fieldScope);
+        case "array" -> extractArrayConstraints(schemaNode, fieldScope);
+        // TODO: Could be also applied only on Maps instead of "all the rest"
+        case OBJECT_LITERAL -> extractObjectConstraints(fieldScope);
+        default -> {
+        }
+      }
+    }
+
+    private void extractStringConstraints(ObjectNode schemaNode, FieldScope fieldScope) {
+      pattern = ofNullable(fieldScope.getAnnotationConsideringFieldAndGetter(Pattern.class))
+          .map(Pattern::value)
+          .or(() -> ofNullable(schemaNode.path("pattern").asString(null)))
+          .orElse(null);
+      minLength = findMinInSizeAnnotation(fieldScope)
+          .or(() -> ofNullable(schemaNode.has("minLength") ? (long) schemaNode.get("minLength").intValue() : null))
+          .orElse(null);
+      maxLength = findMaxInSizeAnnotation(fieldScope)
+          .or(() -> ofNullable(schemaNode.has("maxLength") ? (long) schemaNode.get("maxLength").intValue() : null))
+          .orElse(null);
+    }
+
+    private void extractNumericConstraints(ObjectNode schemaNode, FieldScope fieldScope) {
+      Double minimum = schemaNode.has("minimum") ? schemaNode.get("minimum").doubleValue() : null;
+      Boolean exclMin = schemaNode.has("exclusiveMinimum") ? schemaNode.get("exclusiveMinimum").booleanValue() : null;
+      Double maximum = schemaNode.has("maximum") ? schemaNode.get("maximum").doubleValue() : null;
+      Boolean exclMax = schemaNode.has("exclusiveMaximum") ? schemaNode.get("exclusiveMaximum").booleanValue() : null;
+      setMinMax(fieldScope, minimum, exclMin, maximum, exclMax);
+    }
+
+    private void extractArrayConstraints(ObjectNode schemaNode, FieldScope fieldScope) {
+      minItems = findMinInSizeAnnotation(fieldScope)
+          .or(() -> ofNullable(schemaNode.has("minItems") ? (long) schemaNode.get("minItems").intValue() : null))
+          .orElse(null);
+      maxItems = findMaxInSizeAnnotation(fieldScope)
+          .or(() -> ofNullable(schemaNode.has("maxItems") ? (long) schemaNode.get("maxItems").intValue() : null))
+          .orElse(null);
+    }
+
+    private void extractObjectConstraints(FieldScope fieldScope) {
+      minProperties = findMinInSizeAnnotation(fieldScope).orElse(null);
+      maxProperties = findMaxInSizeAnnotation(fieldScope).orElse(null);
     }
 
     JsonNode toDefault(FieldScope fieldScope) {
@@ -370,8 +379,14 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
       try {
         if (rawType == String.class) {
           // Strings don't need JSON parsing - use the value directly
-          return tools.jackson.databind.node.StringNode.valueOf(value);
+          return StringNode.valueOf(value);
         }
+        // Add Enum handling
+        if (rawType.isEnum()) {
+          Object enumValue = resolvingContext.objectMapper.convertValue(value, rawType);
+          return resolvingContext.objectMapper.convertValue(enumValue, JsonNode.class);
+        }
+
         // For non-string types, parse as JSON
         Object typedValue = resolvingContext.objectMapper.readValue(value, rawType);
         return resolvingContext.objectMapper.convertValue(typedValue, JsonNode.class);
@@ -456,136 +471,160 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
     }
   }
 
+  private record ObjectContext<T>(T objectSchema, List<String> required, Map<String, JavaType> propertyTypes,
+      Map<String, FieldScope> cachedFieldScopes) {
+  }
+
   private T resolveObject(LinkedHashMap<String, String> visited, InternalSchemaSwaps schemaSwaps,
       ObjectNode schemaNode, Class<?> rawClass, String... ignore) {
 
     Set<String> ignores = ignore.length > 0 ? new LinkedHashSet<>(Arrays.asList(ignore)) : Collections.emptySet();
-
-    T objectSchema = singleProperty("object");
-
+    T objectSchema = singleProperty(OBJECT_LITERAL);
     schemaSwaps = schemaSwaps.branchAnnotations();
-    final InternalSchemaSwaps swaps = schemaSwaps;
 
+    BeanDescription bd = introspectBean(rawClass);
+    boolean preserveUnknownFields = resolvingContext.implicitPreserveUnknownFields
+        && (bd.findAnyGetter() != null || bd.findAnySetterAccessor() != null);
+
+    ObjectContext<T> ctx = new ObjectContext<>(objectSchema, new ArrayList<>(),
+        buildPropertyTypeMap(bd), new LinkedHashMap<>());
+
+    collectDependentClasses(rawClass);
+    applyClassLevelAnnotations(objectSchema, schemaSwaps, rawClass);
+    resolveProperties(visited, schemaSwaps, schemaNode, rawClass, ignores, ctx);
+    schemaSwaps.throwIfUnmatchedSwaps();
+
+    return finalizeObjectSchema(objectSchema, rawClass, ctx.required, preserveUnknownFields);
+  }
+
+  private BeanDescription introspectBean(Class<?> rawClass) {
     SerializationConfig config = resolvingContext.objectMapper.serializationConfig();
     JavaType javaType = config.constructType(rawClass);
     ClassIntrospector ci = config.classIntrospectorInstance().forOperation(config);
     AnnotatedClass ac = ci.introspectClassAnnotations(javaType);
-    BeanDescription bd = ci.introspectForSerialization(javaType, ac);
-    boolean preserveUnknownFields = false;
-    if (resolvingContext.implicitPreserveUnknownFields) {
-      preserveUnknownFields = bd.findAnyGetter() != null || bd.findAnySetterAccessor() != null;
-    }
+    return ci.introspectForSerialization(javaType, ac);
+  }
 
+  private Map<String, JavaType> buildPropertyTypeMap(BeanDescription bd) {
     Map<String, JavaType> propertyTypes = new HashMap<>();
     for (BeanPropertyDefinition bpd : bd.findProperties()) {
       propertyTypes.put(bpd.getName(), bpd.getPrimaryType());
     }
+    return propertyTypes;
+  }
 
-    collectDependentClasses(rawClass);
-
+  private void applyClassLevelAnnotations(T objectSchema, InternalSchemaSwaps swaps, Class<?> rawClass) {
     JsonClassDescription classDescription = findClassAnnotation(rawClass, JsonClassDescription.class);
     if (classDescription != null && Utils.isNotNullOrEmpty(classDescription.value())) {
       objectSchema.setDescription(classDescription.value());
     }
-
-    // while it should not be repeating, we reuse this method to look for preserve unknown on the class hierarchy
+    // While @PreserveUnknownFields should not be repeating, we reuse consumeRepeatingAnnotation
+    // to walk the class hierarchy and find it on any level
     consumeRepeatingAnnotation(rawClass, PreserveUnknownFields.class,
         ignored -> objectSchema.setXKubernetesPreserveUnknownFields(true));
+    consumeRepeatingAnnotation(rawClass, SchemaSwap.class,
+        ss -> swaps.registerSwap(rawClass, ss.originalType(), ss.fieldName(), ss.targetType(), ss.depth()));
+  }
 
-    consumeRepeatingAnnotation(rawClass, SchemaSwap.class, ss -> {
-      swaps.registerSwap(rawClass,
-          ss.originalType(),
-          ss.fieldName(),
-          ss.targetType(), ss.depth());
-    });
+  private void resolveProperties(LinkedHashMap<String, String> visited, InternalSchemaSwaps schemaSwaps,
+      ObjectNode schemaNode, Class<?> rawClass, Set<String> ignores, ObjectContext<T> ctx) {
 
-    List<String> required = new ArrayList<>();
-
-    // Pre-cache field scopes before iterating, because toJsonSchema calls during
-    // schema swaps clear the fieldScopes map in ResolvingContext
-    Map<String, FieldScope> cachedFieldScopes = new LinkedHashMap<>();
-
-    // Safely extract properties node - may be missing for classes with no serializable properties
     JsonNode propertiesNode = schemaNode.get("properties");
-    ObjectNode properties = propertiesNode instanceof ObjectNode ? (ObjectNode) propertiesNode : null;
-    if (properties != null) {
-      for (var entry : nodeToMap(properties).entrySet()) {
-        FieldScope fs = resolvingContext.getFieldScope(rawClass, entry.getKey());
-        if (fs != null) {
-          cachedFieldScopes.put(entry.getKey(), fs);
-        }
-      }
-
-      for (var it = new TreeMap<>(nodeToMap(properties)).entrySet().iterator(); it.hasNext();) {
-        var property = it.next();
-        String name = property.getKey();
-        if (ignores.contains(name)) {
-          continue;
-        }
-        schemaSwaps = schemaSwaps.branchDepths();
-        SwapResult swapResult = schemaSwaps.lookupAndMark(rawClass, name);
-        LinkedHashMap<String, String> savedVisited = visited;
-        if (swapResult.onGoing) {
-          visited = new LinkedHashMap<>();
-        }
-
-        final FieldScope fieldScope = cachedFieldScopes.get(name);
-        if (fieldScope == null) {
-          continue; // skip properties we couldn't introspect
-        }
-        if (fieldScope.getAnnotationConsideringFieldAndGetter(JsonIgnore.class) != null) {
-          continue;
-        }
-
-        // Resolve $ref to get the actual property schema
-        JsonNode resolvedPropertyNode = resolveRef(property.getValue());
-        ObjectNode propertySchemaNode = resolvedPropertyNode instanceof ObjectNode
-            ? (ObjectNode) resolvedPropertyNode
-            : property.getValue() instanceof ObjectNode ? (ObjectNode) property.getValue()
-                : resolvingContext.objectMapper.createObjectNode();
-        PropertyMetadata propertyMetadata = new PropertyMetadata(propertySchemaNode, fieldScope, rawClass);
-
-        if (propertyMetadata.required) {
-          required.add(name);
-        }
-
-        // Use BeanDescription property types (with proper generics) over victools erased types
-        JavaType propertyType = propertyTypes.getOrDefault(name,
-            config.constructType(fieldScope.getType().getErasedType()));
-        if (swapResult.classRef != null) {
-          propertyMetadata.schemaFrom = swapResult.classRef;
-        }
-        if (propertyMetadata.schemaFrom != null) {
-          if (propertyMetadata.schemaFrom == void.class) {
-            // fully omit - this is a little inconsistent with the NullSchema handling
-            continue;
-          }
-          // Use toJsonSchemaForSwap to preserve the primary schema's $defs and rootSchema
-          propertySchemaNode = resolvingContext.toJsonSchemaForSwap(propertyMetadata.schemaFrom);
-          propertyType = config.constructType(propertyMetadata.schemaFrom);
-        }
-
-        T schema = resolveProperty(visited, schemaSwaps, name, propertyType, propertySchemaNode, fieldScope);
-
-        propertyMetadata.updateSchema(schema);
-
-        if (!swapResult.onGoing) {
-          for (Entry<Class<? extends Annotation>, LinkedHashMap<String, AnnotationMetadata>> entry2 : pathMetadata
-              .entrySet()) {
-            ofNullable(fieldScope.getAnnotationConsideringFieldAndGetter(entry2.getKey())).ifPresent(
-                ann -> entry2.getValue().put(toFQN(savedVisited, name),
-                    new AnnotationMetadata(ann, schema)));
-          }
-        }
-
-        visited = savedVisited;
-
-        addProperty(name, objectSchema, schema);
-      }
+    if (!(propertiesNode instanceof ObjectNode properties)) {
+      return;
     }
 
-    swaps.throwIfUnmatchedSwaps();
+    cacheFieldScopes(rawClass, properties, ctx.cachedFieldScopes);
 
+    for (var property : new TreeMap<>(nodeToMap(properties)).entrySet()) {
+      String name = property.getKey();
+      if (ignores.contains(name)) {
+        continue;
+      }
+      resolveAndAddProperty(visited, schemaSwaps, rawClass, ctx, name, property.getValue());
+    }
+  }
+
+  // Pre-cache field scopes before iterating, because toJsonSchema calls during
+  // schema swaps clear the fieldScopes map in ResolvingContext
+  private void cacheFieldScopes(Class<?> rawClass, ObjectNode properties, Map<String, FieldScope> target) {
+    for (var entry : nodeToMap(properties).entrySet()) {
+      FieldScope fs = resolvingContext.getFieldScope(rawClass, entry.getKey());
+      if (fs != null) {
+        target.put(entry.getKey(), fs);
+      }
+    }
+  }
+
+  private void resolveAndAddProperty(LinkedHashMap<String, String> visited, InternalSchemaSwaps schemaSwaps,
+      Class<?> rawClass, ObjectContext<T> ctx, String name, JsonNode propertyNode) {
+
+    FieldScope fieldScope = ctx.cachedFieldScopes.get(name);
+    if (fieldScope == null || fieldScope.getAnnotationConsideringFieldAndGetter(JsonIgnore.class) != null) {
+      return;
+    }
+
+    schemaSwaps = schemaSwaps.branchDepths();
+    SwapResult swapResult = schemaSwaps.lookupAndMark(rawClass, name);
+    LinkedHashMap<String, String> effectiveVisited = swapResult.onGoing ? new LinkedHashMap<>() : visited;
+
+    ObjectNode propertySchemaNode = resolvePropertySchemaNode(propertyNode);
+    PropertyMetadata propertyMetadata = new PropertyMetadata(propertySchemaNode, fieldScope, rawClass);
+
+    if (propertyMetadata.required) {
+      ctx.required.add(name);
+    }
+
+    // Use BeanDescription property types (with proper generics) over victools erased types
+    SerializationConfig config = resolvingContext.objectMapper.serializationConfig();
+    JavaType propertyType = ctx.propertyTypes.getOrDefault(name,
+        config.constructType(fieldScope.getType().getErasedType()));
+
+    if (swapResult.classRef != null) {
+      propertyMetadata.schemaFrom = swapResult.classRef;
+    }
+    if (propertyMetadata.schemaFrom != null) {
+      if (propertyMetadata.schemaFrom == void.class) {
+        // Fully omit - this is a little inconsistent with the NullSchema handling
+        return;
+      }
+      // Use toJsonSchemaForSwap to preserve the primary schema's $defs and rootSchema
+      propertySchemaNode = resolvingContext.toJsonSchemaForSwap(propertyMetadata.schemaFrom);
+      propertyType = config.constructType(propertyMetadata.schemaFrom);
+    }
+
+    T schema = resolveProperty(effectiveVisited, schemaSwaps, name, propertyType, propertySchemaNode, fieldScope);
+    propertyMetadata.updateSchema(schema);
+
+    if (!swapResult.onGoing) {
+      collectPathMetadata(fieldScope, visited, name, schema);
+    }
+
+    addProperty(name, ctx.objectSchema, schema);
+  }
+
+  // Resolve $ref to get the actual property schema node
+  private ObjectNode resolvePropertySchemaNode(JsonNode propertyNode) {
+    JsonNode resolved = resolveRef(propertyNode);
+    if (resolved instanceof ObjectNode objectNode) {
+      return objectNode;
+    }
+    if (propertyNode instanceof ObjectNode objectNode) {
+      return objectNode;
+    }
+    return resolvingContext.objectMapper.createObjectNode();
+  }
+
+  private void collectPathMetadata(FieldScope fieldScope, LinkedHashMap<String, String> visited,
+      String name, T schema) {
+    for (var entry : pathMetadata.entrySet()) {
+      ofNullable(fieldScope.getAnnotationConsideringFieldAndGetter(entry.getKey())).ifPresent(
+          ann -> entry.getValue().put(toFQN(visited, name), new AnnotationMetadata(ann, schema)));
+    }
+  }
+
+  private T finalizeObjectSchema(T objectSchema, Class<?> rawClass,
+      List<String> required, boolean preserveUnknownFields) {
     objectSchema.setRequired(required);
     if (preserveUnknownFields) {
       objectSchema.setXKubernetesPreserveUnknownFields(true);
@@ -666,150 +705,218 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
   private T resolveProperty(LinkedHashMap<String, String> visited, InternalSchemaSwaps schemaSwaps, String name,
       JavaType type, ObjectNode schemaNode, FieldScope fieldScope) {
 
-    // Resolve $ref first
+    // Resolve $ref first — victools uses $ref/$defs but CRDs require inline schemas
     JsonNode resolved = resolveRef(schemaNode);
-    if (resolved instanceof ObjectNode) {
-      schemaNode = (ObjectNode) resolved;
+    if (resolved instanceof ObjectNode objectNode) {
+      schemaNode = objectNode;
     }
 
     String schemaType = resolveSchemaType(schemaNode);
 
-    if ("array".equals(schemaType)) {
-      JsonNode items = schemaNode.path("items");
-      if (items.isMissingNode()) {
-        throw new IllegalStateException(String.format("Untyped collection %s", name));
-      }
-      JsonNode resolvedItems = resolveRef(items);
-      ObjectNode arrayItemSchema = resolvedItems instanceof ObjectNode
-          ? (ObjectNode) resolvedItems
-          : resolvingContext.objectMapper.createObjectNode();
-      // Get the content type; if null (victools may resolve to element type), use type directly
-      JavaType contentType = type != null ? type.getContentType() : null;
-      if (contentType == null) {
-        // Fallback: construct from schema or use Object
-        contentType = type != null ? type : resolvingContext.objectMapper.serializationConfig().constructType(Object.class);
-      }
-      final T schema = resolveProperty(visited, schemaSwaps, name,
-          contentType, arrayItemSchema, null);
-      handleTypeAnnotations(schema, fieldScope, List.class, 0);
-      return arrayLikeProperty(schema);
-    } else if ("integer".equals(schemaType)) {
-      return singleProperty("integer");
-    } else if ("number".equals(schemaType)) {
-      return singleProperty("number");
-    } else if ("boolean".equals(schemaType)) {
-      return singleProperty("boolean");
-    } else if ("string".equals(schemaType)) {
-      JsonNode enumNode = schemaNode.path("enum");
-      if (type != null && type.isEnumType()) {
-        // Build enum values from the Java enum using Jackson serialization.
-        // This correctly handles @JsonProperty renaming and @JsonIgnore filtering,
-        // which victools' FLATTENED_ENUMS may not do accurately.
-        // Also handles cases where victools doesn't generate enum values at all
-        // (e.g., for package-private inner enums).
-        final JsonNode[] enumValues = buildEnumValuesFromJavaType(type);
-        if (enumValues.length > 0) {
-          return enumProperty(enumValues);
-        }
-      } else if (!enumNode.isMissingNode() && enumNode.isArray()) {
-        final JsonNode[] enumValues = StreamSupport
-            .stream(enumNode.spliterator(), false)
-            .map(JsonNode::asString)
-            .sorted()
-            .map(JsonNodeFactory.instance::stringNode)
-            .toArray(JsonNode[]::new);
+    // Dispatch by schema type — each branch handles one JSON Schema type
+    T result = resolveBySchemaType(visited, schemaSwaps, name, type, schemaNode, fieldScope, schemaType);
+    if (result != null) {
+      return result;
+    }
+
+    // Check for Kubernetes-specific schema extensions (no "type" field, identified by x-kubernetes-* markers)
+    result = resolveKubernetesExtensions(schemaNode);
+    if (result != null) {
+      return result;
+    }
+
+    // Map-like type: detect by Java type. victools may emit additionalProperties, or just
+    // {"type":"object"} for maps with Object/raw values, or even an empty schema for some cases.
+    if (type != null && type.isMapLikeType()
+        && (schemaNode.has(ADDITIONAL_PROPERTIES) || OBJECT_LITERAL.equals(schemaType) || schemaType.isEmpty())) {
+      return resolveMapProperty(visited, schemaSwaps, name, type, schemaNode, fieldScope);
+    }
+
+    // "any" schema — no type, no properties, no additionalProperties
+    if (schemaType.isEmpty() && !schemaNode.has("properties") && !schemaNode.has(ADDITIONAL_PROPERTIES)) {
+      return resolveAnySchema(visited, schemaSwaps, name, type, fieldScope);
+    }
+
+    // Object type — recurse into nested object
+    return resolveNestedObject(visited, schemaSwaps, name, type, schemaNode);
+  }
+
+  private static final String ADDITIONAL_PROPERTIES = "additionalProperties";
+
+  /**
+   * Dispatches to the appropriate handler based on the JSON Schema "type" field.
+   * Returns null if the type doesn't match any primitive/array/string handler.
+   */
+  private T resolveBySchemaType(LinkedHashMap<String, String> visited, InternalSchemaSwaps schemaSwaps,
+      String name, JavaType type, ObjectNode schemaNode, FieldScope fieldScope, String schemaType) {
+    return switch (schemaType) {
+      case "array" -> resolveArrayProperty(visited, schemaSwaps, name, type, schemaNode, fieldScope);
+      case INTEGER_LITERAL -> singleProperty(INTEGER_LITERAL);
+      case NUMBER_LITERAL -> singleProperty(NUMBER_LITERAL);
+      case "boolean" -> singleProperty("boolean");
+      case STRING_LITERAL -> resolveStringOrEnum(type, schemaNode);
+      // TODO: this may not be the right choice, but rarely will someone be using Void
+      case "null" -> singleProperty(OBJECT_LITERAL);
+      default -> null;
+    };
+  }
+
+  /**
+   * Handles array-typed properties by resolving the items schema and wrapping it.
+   */
+  private T resolveArrayProperty(LinkedHashMap<String, String> visited, InternalSchemaSwaps schemaSwaps,
+      String name, JavaType type, ObjectNode schemaNode, FieldScope fieldScope) {
+    JsonNode items = schemaNode.path("items");
+    if (items.isMissingNode()) {
+      throw new IllegalStateException(String.format("Untyped collection %s", name));
+    }
+    JsonNode resolvedItems = resolveRef(items);
+    ObjectNode arrayItemSchema = resolvedItems instanceof ObjectNode resolvedObjectItems
+        ? resolvedObjectItems
+        : resolvingContext.objectMapper.createObjectNode();
+    // Get the content type; if null (victools may resolve to element type), use type directly
+    JavaType contentType = type != null ? type.getContentType() : null;
+    if (contentType == null) {
+      contentType = type != null ? type : resolvingContext.objectMapper.serializationConfig().constructType(Object.class);
+    }
+    T schema = resolveProperty(visited, schemaSwaps, name, contentType, arrayItemSchema, null);
+    handleTypeAnnotations(schema, fieldScope, List.class, 0);
+    return arrayLikeProperty(schema);
+  }
+
+  /**
+   * Handles string-typed properties, including enum detection.
+   * Builds enum values from the Java type (using Jackson serialization to respect @JsonProperty renaming
+   * and @JsonIgnore filtering) or from the schema's enum node.
+   */
+  private T resolveStringOrEnum(JavaType type, ObjectNode schemaNode) {
+    if (type != null && type.isEnumType()) {
+      JsonNode[] enumValues = buildEnumValuesFromJavaType(type);
+      if (enumValues.length > 0) {
         return enumProperty(enumValues);
       }
-      return singleProperty("string");
-    } else if ("null".equals(schemaType)) {
-      return singleProperty("object"); // TODO: this may not be the right choice, but rarely will someone be using Void
-    } else if (schemaNode.has("x-kubernetes-int-or-string")) {
+    }
+    JsonNode enumNode = schemaNode.path("enum");
+    if (!enumNode.isMissingNode() && enumNode.isArray()) {
+      JsonNode[] enumValues = StreamSupport
+          .stream(enumNode.spliterator(), false)
+          .map(JsonNode::asString)
+          .sorted()
+          .map(JsonNodeFactory.instance::stringNode)
+          .toArray(JsonNode[]::new);
+      return enumProperty(enumValues);
+    }
+    return singleProperty(STRING_LITERAL);
+  }
+
+  /**
+   * Checks for Kubernetes-specific schema extensions (x-kubernetes-int-or-string,
+   * x-kubernetes-embedded-resource, x-kubernetes-preserve-unknown-fields).
+   * Returns null if no extension marker is found.
+   */
+  private T resolveKubernetesExtensions(ObjectNode schemaNode) {
+    if (schemaNode.has("x-kubernetes-int-or-string")) {
       return intOrString();
-    } else if (schemaNode.has("x-kubernetes-embedded-resource")) {
+    }
+    if (schemaNode.has("x-kubernetes-embedded-resource")) {
       return raw();
-    } else if (schemaNode.has("x-kubernetes-preserve-unknown-fields")) {
+    }
+    if (schemaNode.has("x-kubernetes-preserve-unknown-fields")) {
       T schema = singleProperty(null);
       schema.setXKubernetesPreserveUnknownFields(true);
       return schema;
-    } else if (type != null && type.isMapLikeType()
-        && (schemaNode.has("additionalProperties") || "object".equals(schemaType) || schemaType.isEmpty())) {
-      // Map-like type: detect by Java type. victools may emit additionalProperties, or just
-      // {"type":"object"} for maps with Object/raw values, or even an empty schema for some cases.
-      final JavaType keyType = type.getKeyType();
-      final JavaType valueType = type.getContentType();
+    }
+    return null;
+  }
 
-      if (keyType != null && keyType.getRawClass() != String.class) {
-        logger.warn("Property '{}' with '{}' key type is mapped to 'string' because of CRD schemas limitations", name,
-            keyType);
-      }
+  /**
+   * Resolves a map-like property by extracting the value type schema from additionalProperties.
+   * CRD schemas only support string keys, so non-string key types trigger a warning.
+   */
+  private T resolveMapProperty(LinkedHashMap<String, String> visited, InternalSchemaSwaps schemaSwaps,
+      String name, JavaType type, ObjectNode schemaNode, FieldScope fieldScope) {
+    JavaType keyType = type.getKeyType();
+    if (keyType != null && keyType.getRawClass() != String.class) {
+      logger.warn("Property '{}' with '{}' key type is mapped to 'string' because of CRD schemas limitations",
+          name, keyType);
+    }
 
-      JsonNode additionalPropsNode = resolveRef(schemaNode.path("additionalProperties"));
-      ObjectNode additionalProps = additionalPropsNode instanceof ObjectNode
-          ? (ObjectNode) additionalPropsNode
-          : resolvingContext.objectMapper.createObjectNode();
-      JavaType resolvedValueType = valueType != null ? valueType
-          : resolvingContext.objectMapper.serializationConfig().constructType(Object.class);
-      T component = resolveProperty(visited, schemaSwaps, name, resolvedValueType, additionalProps, null);
-      handleTypeAnnotations(component, fieldScope, Map.class, 1);
-      return mapLikeProperty(component);
-    } else if (schemaType.isEmpty() && !schemaNode.has("properties") && !schemaNode.has("additionalProperties")) {
-      // "any" schema -- no type, no properties, no additionalProperties
-      if (type != null) {
-        if (type.getRawClass() == IntOrString.class || type.getRawClass() == Quantity.class) {
-          return intOrString();
-        }
-        if (type.getRawClass() == RawExtension.class) {
-          return raw();
-        }
-        // Map-like type with empty schema (e.g., Map<String, Object>):
-        // victools may not generate additionalProperties for maps with Object values
-        if (type.isMapLikeType()) {
-          final JavaType keyType = type.getKeyType();
-          final JavaType valueType = type.getContentType();
-          if (keyType != null && keyType.getRawClass() != String.class) {
-            logger.warn("Property '{}' with '{}' key type is mapped to 'string' because of CRD schemas limitations", name,
-                keyType);
-          }
-          ObjectNode emptySchema = resolvingContext.objectMapper.createObjectNode();
-          JavaType resolvedValueType = valueType != null ? valueType
-              : resolvingContext.objectMapper.serializationConfig().constructType(Object.class);
-          T component = resolveProperty(visited, schemaSwaps, name, resolvedValueType, emptySchema, null);
-          handleTypeAnnotations(component, fieldScope, Map.class, 1);
-          return mapLikeProperty(component);
-        }
-        if (JsonNode.class.isAssignableFrom(type.getRawClass())) {
-          T schema = singleProperty(null);
-          schema.setXKubernetesPreserveUnknownFields(true);
-          return schema;
-        }
-        if (type.getRawClass() == ObjectNode.class) {
-          T schema = singleProperty("object");
-          schema.setXKubernetesPreserveUnknownFields(true);
-          return schema;
-        }
-        if (type.getRawClass() == Object.class) {
-          T schema = singleProperty("object");
-          if (fieldScope != null) {
-            schema.setXKubernetesPreserveUnknownFields(true);
-          }
-          return schema;
-        }
-        return singleProperty(null);
-      }
+    JsonNode additionalPropsNode = resolveRef(schemaNode.path(ADDITIONAL_PROPERTIES));
+    ObjectNode additionalProps = additionalPropsNode instanceof ObjectNode ap
+        ? ap
+        : resolvingContext.objectMapper.createObjectNode();
+    JavaType valueType = type.getContentType();
+    JavaType resolvedValueType = valueType != null ? valueType
+        : resolvingContext.objectMapper.serializationConfig().constructType(Object.class);
+    T component = resolveProperty(visited, schemaSwaps, name, resolvedValueType, additionalProps, null);
+    handleTypeAnnotations(component, fieldScope, Map.class, 1);
+    return mapLikeProperty(component);
+  }
+
+  /**
+   * Handles schemas with no type, no properties, and no additionalProperties ("any" schemas).
+   * Checks for well-known Kubernetes types (IntOrString, Quantity, RawExtension), map-like types
+   * where victools omitted additionalProperties, and free-form JSON types (JsonNode, ObjectNode).
+   */
+  private T resolveAnySchema(LinkedHashMap<String, String> visited, InternalSchemaSwaps schemaSwaps,
+      String name, JavaType type, FieldScope fieldScope) {
+    if (type == null) {
       return singleProperty(null);
     }
 
-    // Object type -- recurse
+    Class<?> rawClass = type.getRawClass();
+
+    // Well-known Kubernetes types that use "any" schema representation
+    if (rawClass == IntOrString.class || rawClass == Quantity.class) {
+      return intOrString();
+    }
+    if (rawClass == RawExtension.class) {
+      return raw();
+    }
+
+    // Map-like type with empty schema (e.g., Map<String, Object>):
+    // victools may not generate additionalProperties for maps with Object values
+    if (type.isMapLikeType()) {
+      ObjectNode emptySchema = resolvingContext.objectMapper.createObjectNode();
+      return resolveMapProperty(visited, schemaSwaps, name, type, emptySchema, fieldScope);
+    }
+
+    // Free-form JSON types get x-kubernetes-preserve-unknown-fields
+    if (JsonNode.class.isAssignableFrom(rawClass)) {
+      T schema = singleProperty(null);
+      schema.setXKubernetesPreserveUnknownFields(true);
+      return schema;
+    }
+    if (rawClass == ObjectNode.class) {
+      T schema = singleProperty(OBJECT_LITERAL);
+      schema.setXKubernetesPreserveUnknownFields(true);
+      return schema;
+    }
+    if (rawClass == Object.class) {
+      T schema = singleProperty(OBJECT_LITERAL);
+      if (fieldScope != null) {
+        schema.setXKubernetesPreserveUnknownFields(true);
+      }
+      return schema;
+    }
+    return singleProperty(null);
+  }
+
+  /**
+   * Handles object-typed properties by recursing into the nested class.
+   * Detects well-known Kubernetes interfaces and cyclic references.
+   */
+  private T resolveNestedObject(LinkedHashMap<String, String> visited, InternalSchemaSwaps schemaSwaps,
+      String name, JavaType type, ObjectNode schemaNode) {
     if (type == null) {
-      // No type info available, treat as generic object
-      T schema = singleProperty("object");
+      T schema = singleProperty(OBJECT_LITERAL);
       schema.setXKubernetesPreserveUnknownFields(true);
       return schema;
     }
 
     Class<?> def = type.getRawClass();
 
-    // KubernetesResource is too broad, but we can check for several common subclasses
+    // KubernetesResource is too broad, but common subclasses can be recognized
     if (def == GenericKubernetesResource.class
         || (def.isInterface() && HasMetadata.class.isAssignableFrom(def))) {
       return raw();
@@ -824,11 +931,12 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
 
     // Free-form JSON object produced by victools custom definition
     if (def == ObjectNode.class) {
-      T schema = singleProperty("object");
+      T schema = singleProperty(OBJECT_LITERAL);
       schema.setXKubernetesPreserveUnknownFields(true);
       return schema;
     }
 
+    // Cyclic reference detection — CRDs don't support $ref, so cycles must be reported
     if (visited.put(def.getName(), name) != null) {
       throw new IllegalArgumentException(
           "Found a cyclic reference involving the field of type " + def.getName() + " starting a field "
@@ -855,14 +963,13 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
     AnnotatedType fieldType = rawField.getAnnotatedType();
 
     Stream.of(fieldType)
-        .filter(Objects::nonNull)
         .filter(AnnotatedParameterizedType.class::isInstance)
         .map(AnnotatedParameterizedType.class::cast)
         .map(AnnotatedParameterizedType::getAnnotatedActualTypeArguments)
         .filter(a -> typeIndex < a.length) // Guard against subtype wrappers with fewer type params
         .map(a -> a[typeIndex])
         .forEach(at -> {
-          if ("string".equals(schema.getType())) {
+          if (STRING_LITERAL.equals(schema.getType())) {
             ofNullable(at.getAnnotation(Pattern.class))
                 .ifPresent(a -> schema.setPattern(a.value()));
 
@@ -876,7 +983,7 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
                 .filter(v -> v < Long.MAX_VALUE)
                 .ifPresent(schema::setMaxLength);
 
-          } else if ("number".equals(schema.getType()) || "integer".equals(schema.getType())) {
+          } else if (NUMBER_LITERAL.equals(schema.getType()) || INTEGER_LITERAL.equals(schema.getType())) {
             ofNullable(at.getAnnotation(Min.class)).ifPresent(a -> {
               schema.setMinimum(a.value());
               if (!a.inclusive()) {
@@ -893,10 +1000,6 @@ public abstract class AbstractJsonSchema<T extends KubernetesJSONSchemaProps, V 
         });
   }
 
-  /**
-   * Builds sorted enum values from a Java enum type using Jackson serialization.
-   * This correctly handles @JsonProperty renaming and @JsonIgnore filtering.
-   */
   /**
    * Builds sorted enum values from a Java enum type.
    * Uses getEnumConstants() instead of field.get() to avoid access issues with
