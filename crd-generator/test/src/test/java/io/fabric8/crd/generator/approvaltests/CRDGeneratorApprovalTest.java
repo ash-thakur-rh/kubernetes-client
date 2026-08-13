@@ -15,11 +15,7 @@
  */
 package io.fabric8.crd.generator.approvaltests;
 
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import com.spun.util.tests.TestUtils;
-import io.fabric8.crd.generator.CRDGenerator;
-import io.fabric8.crd.generator.CRDInfo;
 import io.fabric8.crd.generator.approvaltests.annotated.Annotated;
 import io.fabric8.crd.generator.approvaltests.complex.Complex;
 import io.fabric8.crd.generator.approvaltests.described.Described;
@@ -33,12 +29,12 @@ import io.fabric8.crd.generator.approvaltests.replica.Replica;
 import io.fabric8.crd.generator.approvaltests.required.Required;
 import io.fabric8.crd.generator.approvaltests.selectablefield.SelectableField;
 import io.fabric8.crd.generator.approvaltests.validation.Validation;
+import io.fabric8.crdv2.generator.CRDGenerator;
+import io.fabric8.crdv2.generator.CRDInfo;
 import io.fabric8.kubernetes.client.CustomResource;
-import io.sundr.utils.Strings;
 import org.approvaltests.Approvals;
 import org.approvaltests.namer.StackTraceNamer;
 import org.approvaltests.writers.FileApprovalWriter;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.io.CleanupMode;
@@ -60,27 +56,17 @@ class CRDGeneratorApprovalTest {
   @TempDir(cleanup = CleanupMode.ON_SUCCESS)
   File tempDir;
 
-  private boolean minimizeQuotes;
-
   @BeforeEach
   void setUp() {
     Approvals.settings().allowMultipleVerifyCallsForThisClass();
-    minimizeQuotes = ((YAMLFactory) CRDGenerator.YAML_MAPPER.getFactory()).isEnabled(YAMLGenerator.Feature.MINIMIZE_QUOTES);
-    ((YAMLFactory) CRDGenerator.YAML_MAPPER.getFactory()).disable(YAMLGenerator.Feature.MINIMIZE_QUOTES);
-  }
-
-  @AfterEach
-  void tearDown() {
-    if (minimizeQuotes) {
-      ((YAMLFactory) CRDGenerator.YAML_MAPPER.getFactory()).enable(YAMLGenerator.Feature.MINIMIZE_QUOTES);
-    }
   }
 
   @ParameterizedTest(name = "{1}.{2} parallel={3}")
-  @MethodSource("crdApprovalTestsApiV1")
-  @DisplayName("CRD Generator V1 Approval Tests")
-  void apiV1ApprovalTest(
+  @MethodSource("crdApprovalTests")
+  @DisplayName("CRD Generator Approval Tests")
+  void approvalTest(
       Class<? extends CustomResource<?, ?>>[] crClasses, String expectedCrd, String version, boolean parallel) {
+    Approvals.settings().allowMultipleVerifyCallsForThisMethod();
     final Map<String, Map<String, CRDInfo>> result = new CRDGenerator()
         .withParallelGenerationEnabled(parallel)
         .inOutputDir(tempDir)
@@ -101,62 +87,13 @@ class CRDGeneratorApprovalTest {
         new Namer(expectedCrd, version));
   }
 
-  @ParameterizedTest(name = "{1}.{2} parallel={3}")
-  @MethodSource("crdApprovalTestsApiV2")
-  @DisplayName("CRD Generator V2 Approval Tests")
-  void apiV2ApprovalTest(
-      Class<? extends CustomResource<?, ?>>[] crClasses, String expectedCrd, String version, boolean parallel) {
-    Approvals.settings().allowMultipleVerifyCallsForThisMethod();
-    final Map<String, Map<String, io.fabric8.crdv2.generator.CRDInfo>> result = new io.fabric8.crdv2.generator.CRDGenerator()
-        .withParallelGenerationEnabled(parallel)
-        .inOutputDir(tempDir)
-        .customResourceClasses(crClasses)
-        .forCRDVersions(version)
-        .detailedGenerate()
-        .getCRDDetailsPerNameAndVersion();
-
-    assertThat(result)
-        .withFailMessage(() -> "Could not find expected CRD " + expectedCrd
-            + " in results. Found instead: " + result.keySet())
-        .containsKey(expectedCrd)
-        .extractingByKey(expectedCrd)
-        .isNotNull();
-
-    Approvals.verify(
-        new FileApprovalWriter(new File(result.get(expectedCrd).get(version).getFilePath())),
-        new Namer(expectedCrd, version));
-  }
-
-  /**
-   * Method source for test cases targeting CRD-Generator api-v1.
-   *
-   * @return the arguments for the test cases
-   */
-  static Stream<Arguments> crdApprovalTestsApiV1() {
+  static Stream<Arguments> crdApprovalTests() {
     return Stream.concat(
         crdApprovalCasesBase("v1"),
-        crdApprovalCasesBase("v1beta1"))
+        crdApprovalCasesV2Only("v1"))
         .map(tc -> Arguments.of(tc.crClasses, tc.expectedCrd, tc.version, tc.parallel));
   }
 
-  /**
-   * Method source for test cases targeting CRD-Generator api-v2.
-   *
-   * @return the arguments for the test cases
-   */
-  static Stream<Arguments> crdApprovalTestsApiV2() {
-    return Stream.concat(
-        crdApprovalCasesBase("v1"),
-        crdApprovalCasesApiV2("v1"))
-        .map(tc -> Arguments.of(tc.crClasses, tc.expectedCrd, tc.version, tc.parallel));
-  }
-
-  /**
-   * Test cases for CRD-Generator api-v1 and api-v2 which must have the exact same results.
-   *
-   * @param crdVersion the CRD version
-   * @return the test cases
-   */
   static Stream<TestCase> crdApprovalCasesBase(String crdVersion) {
     final List<TestCase> cases = new ArrayList<>();
     for (boolean parallel : new boolean[] { false, true }) {
@@ -175,13 +112,7 @@ class CRDGeneratorApprovalTest {
     return cases.stream();
   }
 
-  /**
-   * Test cases for CRD-Generator api-v2 only.
-   *
-   * @param crdVersion the CRD version
-   * @return the test cases
-   */
-  static Stream<TestCase> crdApprovalCasesApiV2(String crdVersion) {
+  static Stream<TestCase> crdApprovalCasesV2Only(String crdVersion) {
     final List<TestCase> cases = new ArrayList<>();
     for (boolean parallel : new boolean[] { false, true }) {
       cases.add(new TestCase("describeds.samples.fabric8.io", crdVersion, parallel, Described.class));
@@ -213,7 +144,7 @@ class CRDGeneratorApprovalTest {
 
     public Namer(String... parameters) {
       super(TestUtils.getCurrentFileForMethod(0), null);
-      additionalInformation = Strings.join(parameters, ".");
+      additionalInformation = String.join(".", parameters);
     }
 
     @Override

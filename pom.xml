@@ -240,9 +240,8 @@
     <module>kubernetes-tests</module>
     <module>uberjar</module>
     <module>generator-annotations</module>
-    <!-- TODO: crd-generator and java-generator skipped for Jackson 3 migration — need jackson-module-jsonSchema replacement, Sundrio 0.300.0 fixes, Jackson 2/3 coexistence, and JsonNode package renames. Will be fixed in a separate PR. -->
-    <!--<module>crd-generator</module>-->
-    <!--<module>java-generator</module>-->
+    <module>crd-generator</module>
+    <module>java-generator</module>
     <module>kubernetes-client-deps-compatibility-tests</module>
     <module>log4j</module>
     <module>kubernetes-examples</module>
@@ -261,16 +260,6 @@
       <dependency>
         <groupId>io.fabric8</groupId>
         <artifactId>java-generator-core</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>io.fabric8</groupId>
-        <artifactId>crd-generator-apt</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>io.fabric8</groupId>
-        <artifactId>crd-generator-api</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
@@ -688,11 +677,16 @@
         <type>pom</type>
       </dependency>
 
-      <!-- jackson-module-jsonSchema is removed in Jackson 3, pin version for crd-generator (Phase 2 migration) -->
+      <!-- victools jsonschema-generator replaces jackson-module-jsonSchema (removed in Jackson 3) -->
       <dependency>
-        <groupId>com.fasterxml.jackson.module</groupId>
-        <artifactId>jackson-module-jsonSchema</artifactId>
-        <version>2.21.5</version>
+        <groupId>com.github.victools</groupId>
+        <artifactId>jsonschema-generator</artifactId>
+        <version>5.0.0</version>
+      </dependency>
+      <dependency>
+        <groupId>com.github.victools</groupId>
+        <artifactId>jsonschema-module-jackson</artifactId>
+        <version>5.0.0</version>
       </dependency>
 
       <dependency>
