@@ -1,5 +1,17 @@
 ## CHANGELOG
 
+### 8.0-SNAPSHOT
+
+#### Bugs
+
+#### Improvements
+
+#### Dependency Upgrade
+
+#### New Features
+
+#### _**Note**_: Breaking changes
+
 ### 7.9.0 (2026-09-04)
 
 #### Bugs
