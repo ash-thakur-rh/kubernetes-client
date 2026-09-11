@@ -1,10 +1,6 @@
 # CRD Generator
 
-The [CRD Generator annotation processing tool (APT)](../crd-generator/apt/README.md) (`io.fabric8:crd-generator-apt`) and its API (`io.fabric8:crd-generator-api`) are being deprecated and will eventually be removed once we offer a complete replacement for all users.
-
-As a replacement, we're currently providing a new version of the API in `io.fabric8:crd-generator-api-v2` and a few tools to be able to leverage it in your projects.
-
-A migration guide can be found [here](CRD-generator-migration-v2.md). 
+The CRD Generator provides `io.fabric8:crd-generator-api-v2` and a few tools to leverage it in your projects.
 
 The following list contains the available tooling:
 - [CRD Generator Maven Plugin](../crd-generator/maven-plugin/README.md): A Maven plugin that generates CRDs during the build process.
@@ -62,10 +58,9 @@ public class ExampleStatus {
 }
 ```
 
-Running the `compile` task will generate 2 files:
+Running the `compile` task will generate a file:
 
 - `target/classes/META-INF/fabric8/examples.org.example-v1.yml`
-- `target/classes/META-INF/fabric8/examples.org.example-v1beta1.yml`
 
 The schema `<plural>.<group>-<CRD spec version>.yml` is used to calculate the file names.
 
@@ -485,7 +480,7 @@ The object will have the `x-kubernetes-validations` property in the generated CR
 
 Note that all occurences will end up in the resulting list if multiple `ValidationRule` annotations are defined on the same field and/or class.
 The annotation can also be used on the CustomResource class itself, which allows to define CEL rules on the root-level.
-Please look at the [example](crd-generator/api/src/test/java/io/fabric8/crd/example/k8svalidation/K8sValidation.java) and the resulting [CRD](crd-generator/api/src/test/resources/k8svalidations.samples.fabric8.io-v1.yml) to explore all features.
+Please look at the [example](crd-generator/api-v2/src/test/java/io/fabric8/crdv2/example/k8svalidation/K8sValidation.java) and the resulting [CRD](crd-generator/api-v2/src/test/resources/k8svalidations.samples.fabric8.io-v1.yml) to explore all features.
 
 ### io.fabric8.crd.generator.annotation.PrinterColumn
 

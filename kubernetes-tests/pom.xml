@@ -43,12 +43,6 @@
       <artifactId>openshift-client</artifactId>
     </dependency>
 
-    <!-- TODO: crd-generator-apt skipped for Jackson 3 migration, will be restored in a separate PR -->
-    <!--<dependency>
-      <groupId>io.fabric8</groupId>
-      <artifactId>crd-generator-apt</artifactId>
-    </dependency>-->
-
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-engine</artifactId>
