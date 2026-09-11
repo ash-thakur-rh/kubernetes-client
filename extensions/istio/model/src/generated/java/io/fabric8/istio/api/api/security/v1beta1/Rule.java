@@ -12,7 +12,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import tools.jackson.databind.annotation.JsonDeserialize;
 import io.fabric8.kubernetes.api.builder.Editable;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.ContainerPort;
@@ -33,6 +32,7 @@ import io.sundr.builder.annotations.BuildableReference;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
+import tools.jackson.databind.annotation.JsonDeserialize;
 
 /**
  * Rule matches requests from a list of sources that perform a list of operations subject to a list of conditions. A match occurs when at least one source, one operation and all conditions matches the request. An empty rule is always matched.<br><p> <br><p> Any string field in the rule supports Exact, Prefix, Suffix and Presence match:<br><p> <br><p> - Exact match: `abc` will match on value `abc`. - Prefix match: `abc&#42;` will match on value `abc` and `abcd`. - Suffix match: `&#42;abc` will match on value `abc` and `xabc`. - Presence match: `&#42;` will match when value is not empty.

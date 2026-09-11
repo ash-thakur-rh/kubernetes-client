@@ -12,7 +12,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import tools.jackson.databind.annotation.JsonDeserialize;
 import io.fabric8.knative.bindings.v1beta1.KafkaNetSpec;
 import io.fabric8.knative.duck.v1.CloudEventOverrides;
 import io.fabric8.knative.duck.v1.DeliverySpec;
@@ -37,6 +36,7 @@ import io.sundr.builder.annotations.BuildableReference;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
+import tools.jackson.databind.annotation.JsonDeserialize;
 
 /**
  * KafkaSourceSpec defines the desired state of the KafkaSource.

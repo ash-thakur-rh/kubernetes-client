@@ -12,7 +12,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import tools.jackson.databind.annotation.JsonDeserialize;
 import io.fabric8.kubernetes.api.builder.Editable;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.ContainerPort;
@@ -33,6 +32,7 @@ import io.sundr.builder.annotations.BuildableReference;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Accessors;
+import tools.jackson.databind.annotation.JsonDeserialize;
 
 /**
  * GenericAnalysisMessage is an instance of an AnalysisMessage defined by a schema, whose metaschema is AnalysisMessageWeakSchema. (Names are hard.) Code should be able to perform validation of arguments as needed by using the message type information to look at the AnalysisMessageWeakSchema and examine the list of args at runtime. Developers can also create stronger-typed versions of GenericAnalysisMessage for well-known and stable message types.
