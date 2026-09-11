@@ -17,6 +17,15 @@
 name: Generate Model
 
 on:
+  push:
+    branches:
+      - main
+      - issue-7374-crd-lib
+  pull_request:
+    paths-ignore:
+      - 'doc/**'
+      - 'ide-config/**'
+      - '**.md'
   workflow_dispatch:
 
 concurrency:
