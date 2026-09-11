@@ -18,7 +18,7 @@ import lombok.experimental.Accessors;
 import tools.jackson.databind.annotation.JsonDeserialize;
 
 /**
- * ConfigMapEnvSource selects a ConfigMap to populate the environment variables with.<br><p> <br><p> The contents of the target ConfigMap's Data field will represent the key-value pairs as environment variables.
+ * ConfigMapEnvSource selects a ConfigMap to populate the environment variables with.<br><p> <br><p> The contents of the target ConfigMap's Data field will represent the key-value pairs as environment variables. Keys in the BinaryData field are not currently propagated to container env vars.
  */
 @JsonDeserialize(using = tools.jackson.databind.ValueDeserializer.None.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
