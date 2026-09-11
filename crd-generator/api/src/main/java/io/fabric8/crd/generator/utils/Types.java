@@ -60,7 +60,7 @@ public class Types {
     // resolve hierarchy
     final List<ClassRef> classRefs = new ArrayList<>(Types.projectSuperClasses(definition));
     // resolve properties
-    final List<Property> properties = Types.projectProperties(definition);
+    final List<Field> properties = Types.projectProperties(definition);
     // re-create TypeDef with all the needed information
     return new TypeDef(definition.getKind(), definition.getPackageName(),
         definition.getName(), definition.getComments(), definition.getAnnotations(), classRefs,
@@ -100,10 +100,10 @@ public class Types {
    * @param typeDef The type.
    * @return A list with all properties.
    */
-  private static List<Property> projectProperties(TypeDef typeDef) {
+  private static List<Field> projectProperties(TypeDef typeDef) {
     final String fqn = typeDef.getFullyQualifiedName();
     return Stream.concat(
-        typeDef.getProperties().stream().filter(p -> {
+        typeDef.getFields().stream().filter(p -> {
           // enums have self-referential static properties for each enum case so we cannot ignore them
           if (typeDef.isEnum()) {
             final TypeRef typeRef = p.getTypeRef();
@@ -124,7 +124,7 @@ public class Types {
         .collect(Collectors.toList());
   }
 
-  private static Predicate<Property> filterCustomResourceProperties(ClassRef ref) {
+  private static Predicate<Field> filterCustomResourceProperties(ClassRef ref) {
     return p -> !p.isStatic() &&
         (!ref.getFullyQualifiedName().equals(CUSTOM_RESOURCE_NAME) ||
             (p.getName().equals("spec") || p.getName().equals("status")));
@@ -142,7 +142,7 @@ public class Types {
     }
 
     visited.add(def.getFullyQualifiedName());
-    for (Property property : def.getProperties()) {
+    for (Field property : def.getFields()) {
       TypeRef typeRef = property.getTypeRef();
       if (typeRef instanceof ClassRef) {
         final TypeDef typeDef = typeDefFrom((ClassRef) typeRef);
@@ -248,8 +248,8 @@ public class Types {
    * @param typeDef the type whose status property we want to find
    * @return the an optional property.
    */
-  public static Optional<Property> findStatusProperty(TypeDef typeDef) {
-    return typeDef.getProperties().stream()
+  public static Optional<Field> findStatusProperty(TypeDef typeDef) {
+    return typeDef.getFields().stream()
         .filter(Types::isStatusProperty)
         .findFirst();
   }
@@ -261,7 +261,7 @@ public class Types {
    * @param property the property we want to check
    * @return {@code true} if named {@code status}, {@code false} otherwise
    */
-  public static boolean isStatusProperty(Property property) {
+  public static boolean isStatusProperty(Field property) {
     return "status".equals(property.getName()) && getClassFQNIfNotVoid(property.getTypeRef()) != null;
   }
 

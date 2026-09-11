@@ -21,7 +21,7 @@ import io.fabric8.crd.generator.visitor.*;
 import io.fabric8.kubernetes.client.utils.Utils;
 import io.sundr.builder.Visitor;
 import io.sundr.model.AnnotationRef;
-import io.sundr.model.Property;
+import io.sundr.model.Field;
 import io.sundr.model.TypeDef;
 import io.sundr.model.TypeDefBuilder;
 
@@ -81,7 +81,7 @@ public abstract class AbstractCustomResourceHandler {
     addDecorators(config, def, specReplicasPathDetector.getPath(),
         statusReplicasPathDetector.getPath(), labelSelectorPathDetector.getPath());
 
-    Map<String, Property> additionalPrinterColumns = new HashMap<>(additionalPrinterColumnDetector.getProperties());
+    Map<String, Field> additionalPrinterColumns = new HashMap<>(additionalPrinterColumnDetector.getProperties());
     additionalPrinterColumns.forEach((path, property) -> {
       Map<String, Object> parameters = property.getAnnotations().stream()
           .filter(a -> a.getClassRef().getName().equals("PrinterColumn"))
