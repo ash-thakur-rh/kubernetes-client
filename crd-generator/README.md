@@ -3,7 +3,7 @@
 ## Modules
 
 - **CRD Generator API v2** - `io.fabric8:crd-generator-api-v2`  
-  _Core implementation of the generator, based on [Jackson/jsonSchema](https://github.com/FasterXML/jackson-module-jsonSchema)._
+  _Core implementation of the generator, based on [victools jsonschema-generator](https://github.com/victools/jsonschema-generator)._
 - **CRD Generator Collector** - `io.fabric8:crd-generator-collector`  
   _Shared component to find and load compiled Custom Resource classes in directories and Jar files._
 - **CRD Generator Maven Plugin** - `io.fabric8:crd-generator-maven-plugin`   
