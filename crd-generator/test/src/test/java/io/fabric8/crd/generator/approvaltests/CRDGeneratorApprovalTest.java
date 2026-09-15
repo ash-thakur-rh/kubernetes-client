@@ -29,6 +29,8 @@ import io.fabric8.crd.generator.approvaltests.replica.Replica;
 import io.fabric8.crd.generator.approvaltests.required.Required;
 import io.fabric8.crd.generator.approvaltests.selectablefield.SelectableField;
 import io.fabric8.crd.generator.approvaltests.validation.Validation;
+import io.fabric8.crdv2.generator.CRDGenerator;
+import io.fabric8.crdv2.generator.CRDInfo;
 import io.fabric8.kubernetes.client.CustomResource;
 import org.approvaltests.Approvals;
 import org.approvaltests.namer.StackTraceNamer;
@@ -65,7 +67,7 @@ class CRDGeneratorApprovalTest {
   void apiV2ApprovalTest(
       Class<? extends CustomResource<?, ?>>[] crClasses, String expectedCrd, String version, boolean parallel) {
     Approvals.settings().allowMultipleVerifyCallsForThisMethod();
-    final Map<String, Map<String, io.fabric8.crdv2.generator.CRDInfo>> result = new io.fabric8.crdv2.generator.CRDGenerator()
+    final Map<String, Map<String, CRDInfo>> result = new CRDGenerator()
         .withParallelGenerationEnabled(parallel)
         .inOutputDir(tempDir)
         .customResourceClasses(crClasses)
