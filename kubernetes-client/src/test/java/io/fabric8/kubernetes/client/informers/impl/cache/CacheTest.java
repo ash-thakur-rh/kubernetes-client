@@ -18,6 +18,7 @@ package io.fabric8.kubernetes.client.informers.impl.cache;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodBuilder;
 import io.fabric8.kubernetes.client.informers.cache.Cache;
+import io.fabric8.kubernetes.client.informers.cache.ItemStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -27,8 +28,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class CacheTest {
 
@@ -151,6 +154,81 @@ class CacheTest {
 
     List<Pod> clusterNameIndexedPods = podCache.byIndex(clusterIndex, "test-cluster");
     assertEquals(1, clusterNameIndexedPods.size());
+  }
+
+  @Test
+  void testIndexCleanupWithFilteringItemStore() {
+    // Test for issue #8103: CacheImpl should clean up indices even when
+    // a custom ItemStore drops/filters objects (returns null from remove)
+    CacheImpl<Pod> podCache = createCache();
+
+    Pod testPod = new PodBuilder()
+        .withNewMetadata().withNamespace("test-ns").withName("test-pod").endMetadata()
+        .build();
+
+    // Put the pod - ItemStore drops it, but indices should be updated
+    podCache.put(testPod);
+
+    // Verify the store doesn't have the pod (it was dropped)
+    assertNull(podCache.getByKey("test-ns/test-pod"));
+
+    // Remove the pod - ItemStore returns null, but indices should still be cleaned
+    podCache.remove(testPod);
+
+    // Verify indices are cleaned up correctly
+    // byIndex filters results, so if indices weren't cleaned, we'd still get empty list
+    // But this ensures the internal index structure doesn't leak memory
+    List<Pod> indexedPods = podCache.byIndex(Cache.NAMESPACE_INDEX, "test-ns");
+    assertEquals(0, indexedPods.size());
+
+    // Verify keys are also cleaned up
+    List<String> indexKeys = podCache.indexKeys(Cache.NAMESPACE_INDEX, "test-ns");
+    assertEquals(0, indexKeys.size());
+  }
+
+  private static CacheImpl<Pod> createCache() {
+    CacheImpl<Pod> podCache = new CacheImpl<>();
+
+    // Replace the default BasicItemStore with a filtering store that drops everything
+    podCache.setItemStore(new ItemStore<>() {
+      @Override
+      public String getKey(Pod obj) {
+        return Cache.metaNamespaceKeyFunc(obj);
+      }
+
+      @Override
+      public Pod put(String key, Pod obj) {
+        // Drop/filter all objects - simulate a ReducedStateItemStore
+        return null;
+      }
+
+      @Override
+      public Pod remove(String key) {
+        // Object was never stored, return null
+        return null;
+      }
+
+      @Override
+      public Stream<String> keySet() {
+        return Stream.empty();
+      }
+
+      @Override
+      public Stream<Pod> values() {
+        return Stream.empty();
+      }
+
+      @Override
+      public int size() {
+        return 0;
+      }
+
+      @Override
+      public Pod get(String key) {
+        return null;
+      }
+    });
+    return podCache;
   }
 
   private static List<String> mockIndexFunction(Object obj) {

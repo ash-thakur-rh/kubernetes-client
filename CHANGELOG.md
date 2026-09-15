@@ -3,6 +3,7 @@
 ### 8.0-SNAPSHOT
 
 #### Bugs
+* Fix #8103: `CacheImpl` now cleans up index entries correctly when a custom `ItemStore` drops/filters objects. Previously, when using a filtering `ItemStore` (such as `ReducedStateItemStore`), index entries were created unconditionally during `put()` but cleanup was skipped during `remove()` if the store returned null, causing a memory leak that grew with every distinct object seen in the watched scope
 
 #### Improvements
 

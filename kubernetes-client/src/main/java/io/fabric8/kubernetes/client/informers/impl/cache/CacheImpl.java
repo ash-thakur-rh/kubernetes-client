@@ -144,9 +144,10 @@ public class CacheImpl<T extends HasMetadata> implements Cache<T> {
   public synchronized T remove(T obj) {
     String key = getKey(obj);
     T old = this.items.remove(key);
-    if (old != null) {
-      this.updateIndices(old, null, key);
-    }
+    // Always clean up indices. Use the object returned from the store when available,
+    // otherwise use the passed object. This ensures indices are cleaned even when
+    // a custom ItemStore drops/filters objects (not storing them but indices were updated).
+    this.updateIndices(old != null ? old : obj, null, key);
     return old;
   }
 
