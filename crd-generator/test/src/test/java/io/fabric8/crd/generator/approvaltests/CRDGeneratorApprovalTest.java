@@ -62,9 +62,9 @@ class CRDGeneratorApprovalTest {
   }
 
   @ParameterizedTest(name = "{1}.{2} parallel={3}")
-  @MethodSource("crdApprovalTests")
-  @DisplayName("CRD Generator Approval Tests")
-  void approvalTest(
+  @MethodSource("crdApprovalTestsApiV2")
+  @DisplayName("CRD Generator V2 Approval Tests")
+  void apiV2ApprovalTest(
       Class<? extends CustomResource<?, ?>>[] crClasses, String expectedCrd, String version, boolean parallel) {
     Approvals.settings().allowMultipleVerifyCallsForThisMethod();
     final Map<String, Map<String, CRDInfo>> result = new CRDGenerator()
@@ -87,13 +87,24 @@ class CRDGeneratorApprovalTest {
         new Namer(expectedCrd, version));
   }
 
-  static Stream<Arguments> crdApprovalTests() {
+  /**
+   * Method source for test cases targeting CRD-Generator api-v2.
+   *
+   * @return the arguments for the test cases
+   */
+  static Stream<Arguments> crdApprovalTestsApiV2() {
     return Stream.concat(
         crdApprovalCasesBase("v1"),
-        crdApprovalCasesV2Only("v1"))
+        crdApprovalCasesApiV2("v1"))
         .map(tc -> Arguments.of(tc.crClasses, tc.expectedCrd, tc.version, tc.parallel));
   }
 
+  /**
+   * Test cases for CRD-Generator api-v1 and api-v2 which must have the exact same results.
+   *
+   * @param crdVersion the CRD version
+   * @return the test cases
+   */
   static Stream<TestCase> crdApprovalCasesBase(String crdVersion) {
     final List<TestCase> cases = new ArrayList<>();
     for (boolean parallel : new boolean[] { false, true }) {
@@ -112,7 +123,13 @@ class CRDGeneratorApprovalTest {
     return cases.stream();
   }
 
-  static Stream<TestCase> crdApprovalCasesV2Only(String crdVersion) {
+  /**
+   * Test cases for CRD-Generator api-v2 only.
+   *
+   * @param crdVersion the CRD version
+   * @return the test cases
+   */
+  static Stream<TestCase> crdApprovalCasesApiV2(String crdVersion) {
     final List<TestCase> cases = new ArrayList<>();
     for (boolean parallel : new boolean[] { false, true }) {
       cases.add(new TestCase("describeds.samples.fabric8.io", crdVersion, parallel, Described.class));
